@@ -15,13 +15,25 @@ public:
                 uint32_t bin_count);
 
     ~TargetTrack() {}
+    
+    
+    void apply();
+    
+    cv::Rect horiz_roi() const {
+        return horiz_roi_;
+    }
 
 private:
+
+    cv::Rect calc_horiz_roi(cv::Mat src);
+    
     const std::vector<float>& bins_;
     const std::vector<float>& bearings_;
 
     uint32_t beam_count_;
-    uint32_t bin_count_;        
+    uint32_t bin_count_;
+    
+    cv::Rect horiz_roi_;       
 };
 
 }

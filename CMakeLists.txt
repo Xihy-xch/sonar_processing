@@ -1,24 +1,26 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8)
 project (sonar_target_tracking)
 
-include ( FindPkgConfig  )
-
-find_package ( OpenCV REQUIRED )
-
-file ( GLOB SRCS RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp )
-
-set ( ${PROJECT_NAME}_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include CACHE INTERNAL "Sonar Target Tracking Include Directory" FORCE )
-
-include_directories (
-    ${sonar_target_tracking_INCLUDE_DIR}
+set (
+    ${PROJECT_NAME}_SOURCE_DIR
+    ${PROJECT_SOURCE_DIR}/src
+    CACHE PATH "Sonar Target Tracking Source Directory"
+    FORCE
 )
 
-add_library (
-    sonar_target_tracking STATIC
-    ${SRCS}
+set (
+    ${PROJECT_NAME}_INCLUDE_DIR
+    ${PROJECT_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/include/${PROJECT_NAME}
+    CACHE PATH "Sonar Target Tracking Include Directory"
+    FORCE
 )
 
-target_link_libraries (
-    sonar_target_tracking
-    ${OpenCV_LIBS}
+file ( GLOB ${PROJECT_NAME}_SOURCES PATH ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp )
+
+set (
+    ${PROJECT_NAME}_SOURCES
+    ${${PROJECT_NAME}_SOURCES}
+    CACHE STRING "Sonar Target Tracking Source Files"
+    FORCE
 )
