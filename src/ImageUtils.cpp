@@ -19,6 +19,97 @@ void image_utils::cv32f_clahe(cv::Mat src, cv::Mat dst, double clip_size, cv::Si
     aux.convertTo(dst, CV_32F,  1.0 / 255);
 }
 
+void image_utils::clahe_mat8u(cv::Mat src, cv::Mat& dst, double clip_size, cv::Size grid_size) {
+    CV_Assert(src.depth() == CV_8U);
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clip_size, grid_size);
+    clahe->apply(src, dst);
+}
+
+void image_utils::estimate_clahe_parameters(const cv::Mat& src, float& clip_limit, int& grid_size) {
+    CV_Assert(src.depth() == CV_8U);
+    float best_entropy = 0.0;
+    clip_limit = 0.0;
+    grid_size = 0;
+
+    for (size_t i = 2; i <= 32; i *= 2) {
+        for (float j = 0.02; j <= 4; j += 0.02) {
+            cv::Mat dst;
+            clahe_mat8u(src, dst, j, cv::Size(i, i));
+            float entropy = entropy_8u(dst);
+            if (entropy > best_entropy) {
+                best_entropy = entropy;
+                clip_limit = j;
+                grid_size = i;
+            }
+        }
+    }
+}
+
+std::vector<float> image_utils::generate_insonification_pattern(const std::vector<std::vector<float> >& frames) {
+    std::vector<float> pattern;
+    pattern.clear();
+
+    for (unsigned int i = 0; i < frames[0].size(); ++i) {
+        float accum = 0.0;
+
+        for (unsigned int j = 0; j < frames.size(); ++j)
+            accum += frames[j][i];
+
+        accum /= frames.size();
+        pattern.push_back(accum);
+    }
+
+    return pattern;
+}
+
+bool image_utils::load_insonification_pattern(std::string file_path, std::vector<float>& pattern) {
+    std::istream_iterator<float> start(input_file), end;
+    std::ifstream input_file(file_path.c_str());
+    std::vector<float> sonar_data(start, end);
+
+    if (sonar_data.empty())
+        return false;
+
+    pattern = sonar_data;
+    return true;
+}
+
+void image_utils::apply_insonification_correction(std::vector<float>& data, const std::vector<float>& pattern) {
+    std::transform(data.begin(), data.end(), pattern.begin(), data.begin(), std::minus<float>());
+    std::replace_if(data.begin(), data.end(), std::bind2nd(std::less<float>(), 0), 0);
+}
+
+cv::Mat image_utils::create_stddev_filter_mask(const cv::Mat& src, uint mask_size) {
+    CV_Assert(src.depth() == CV_8U);
+    // check if the mask size is valid
+    if (mask_size % 2 == 0 || mask_size < 3) {
+        std::cout << "Mask size needs to be odd and greater or equal than 3." << std::endl;
+        return 0;
+    }
+
+    // create the stddev filter
+    cv::Mat mat;
+    src.convertTo(mat, CV_32F, 1.0 / 255);
+
+    cv::Mat dst = cv::Mat(mat.size(), mat.type());
+    cv::Mat mask = cv::Mat::ones(mask_size, mask_size, CV_32F);
+    int n = cv::sum(mask).val[0];
+    int n1 = n - 1;
+
+    if (n != 1) {
+        cv::Mat conv1, conv2;
+        cv::filter2D(mat.mul(mat), conv1, -1, mask / n1, cv::Point(-1, -1), 0, cv::BORDER_REFLECT);
+        cv::filter2D(mat, conv2, -1, mask, cv::Point(-1, -1), 0, cv::BORDER_REFLECT);
+        conv2 = conv2.mul(conv2) / (n * n1);
+        sqrt(cv::max((conv1-conv2), 0), dst);
+    }
+    else
+        dst = cv::Mat(mat.size(), mat.type());
+
+    return dst;
+}
+
+
 cv::Mat image_utils::zeros_cols(cv::Mat src, std::vector<uint32_t> cols) {
     CV_Assert(src.depth() == CV_32F);
 
