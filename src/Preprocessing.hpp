@@ -13,8 +13,6 @@ cv::Rect calc_horiz_roi(cv::Mat src);
 
 double horiz_deriv(cv::Mat src);
 
-void adaptative_threshold(cv::InputArray src_arr, cv::OutputArray dst_arr);
-
 void mean_horiz_deriv_threshold(cv::InputArray src, cv::OutputArray dst, uint32_t bsize,
                                 double mean_thresh, double horiz_deriv_thresh);
 
@@ -33,6 +31,10 @@ std::vector<double> background_features_estimation(cv::Mat mat, uint32_t bsize);
 void background_features_difference(cv::InputArray src_arr, cv::OutputArray dst_arr, std::vector<double> features, uint32_t bsize);
 
 std::vector<cv::Point> find_biggest_contour(cv::Mat src);
+
+std::vector<std::vector<cv::Point> > target_detect_by_high_intensities(cv::InputArray src_arr);
+
+std::vector<std::vector<cv::Point> > adaptative_target_detect_by_high_intensities(cv::InputArray src_arr);
 
 
 } /* namespace preprocessing */

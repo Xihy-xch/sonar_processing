@@ -26,8 +26,6 @@ public:
 
 private:
 
-    void detect_target_bounding_rect(cv::Mat src);
-
     const std::vector<float>& bins_;
     const std::vector<float>& bearings_;
 

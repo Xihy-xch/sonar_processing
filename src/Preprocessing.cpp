@@ -163,99 +163,6 @@ std::vector<std::vector<cv::Point> > preprocessing::find_contours_and_filter(cv:
     return filtering_contours;
 }
 
-void preprocessing::adaptative_threshold(cv::InputArray src_arr, cv::OutputArray dst_arr) {
-    cv::Mat src = src_arr.getMat();
-
-    dst_arr.create(src.size(), src.type());
-    cv::Mat dst = dst_arr.getMat();
-
-    cv::imshow("source", src);
-
-    cv::Mat mask, mat;
-    src.convertTo(mat, CV_8U, 255);
-
-    cv::blur(mat, mat, cv::Size(7, 7));
-
-    double thresh;
-    thresh = image_utils::otsu_thresh_8u(mat) * 0.9;
-    cv::threshold(mat, mask, thresh, 255, cv::THRESH_BINARY);
-    cv::morphologyEx(mask, mask, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
-    cv::morphologyEx(mask, mask, cv::MORPH_ERODE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(7, 7)), cv::Point(-1, -1), 2);
-
-    std::vector<cv::Point> contour = preprocessing::find_biggest_contour(mask);
-    mask.setTo(0);
-    cv::Rect rc = cv::boundingRect(cv::Mat(contour));
-
-    image_utils::cv32f_clahe(src, src);
-    src(rc).copyTo(mat);
-
-    mat.convertTo(mat, CV_8U, 255);
-    cv::blur(mat, mat, cv::Size(7, 7));
-    thresh = image_utils::otsu_thresh_8u(mat) * 1.5;
-    cv::threshold(mat, mask, thresh, 255, cv::THRESH_BINARY);
-
-    src(rc).copyTo(mat, mask);
-    mat.convertTo(mat, CV_8U, 255);
-    cv::morphologyEx(mat, mat, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT,cv::Size(5, 5)), cv::Point(-1, -1), 2);
-    thresh = image_utils::otsu_thresh_8u(mat) * 2;
-    cv::threshold(mat, mask, thresh, 255, cv::THRESH_BINARY);
-
-    std::vector<std::vector<cv::Point> > contours = preprocessing::find_contours_and_filter(mask, 0.1, 0.2, 0.2);
-
-    mask.setTo(0);
-    cv::drawContours(mask, contours, -1, cv::Scalar(255), CV_FILLED);
-    cv::morphologyEx(mask, mask, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_RECT,cv::Size(5, 5)), cv::Point(-1, -1), 2);
-
-    src(rc).copyTo(mat, mask);
-    cv::imshow("result", mat);
-    cv::imshow("mask", mask);
-
-    // contours = preprocessing::find_contours_and_filter(mask, 0.75, 0.75, 0.75);
-    // mask.setTo(0);
-    // for( int i = 0; i < contours.size(); i++ ) {
-    //     cv::Rect rc = cv::boundingRect( cv::Mat(contours[i]) );
-    //     mask(rc) = 255;
-    // }
-    //
-    //
-    // cv::drawContours(mask, contours, -1, cv::Scalar(255), CV_FILLED);
-
-    // cv::imshow("mask", mask);
-    // src.copyTo(mat, mask);
-    // cv::imshow("mat", mat);
-
-    // cv::drawContours(mask, contours, -1, cv::Scalar(255), CV_FILLED);
-    // cv::imshow("mask 1", mask);
-
-    // mat.setTo(0);
-    // src.copyTo(mat, mask);
-    // mat.convertTo(mat, CV_8U, 255);
-    // cv::imshow("mat 1", mat);
-
-
-    // cv::boxFilter(mat, mat, CV_8U, cv::Size(9, 9));
-    // cv::normalize(mat, mat, 0, 255, cv::NORM_MINMAX);
-    //
-    // thresh =  image_utils::otsu_thresh_8u(mat) * 1.4;
-    // cv::threshold(mat, mask, thresh, 255, cv::THRESH_BINARY);
-    // cv::imshow("mask 2", mask);
-    //
-    //
-    // mat.setTo(0);
-    // src.copyTo(mat, mask);
-    // mat.convertTo(mat, CV_8U, 255);
-    //
-    // cv::boxFilter(mat, mat, CV_8U, cv::Size(7, 7));
-    // cv::normalize(mat, mat, 0, 255, cv::NORM_MINMAX);
-    //
-    // thresh =  image_utils::otsu_thresh_8u(mat);
-    // cv::threshold(mat, mask, thresh, 255, cv::THRESH_BINARY);
-    // cv::imshow("mask 3", mask);
-    // std::vector<std::vector<cv::Point> > contours = preprocessing::find_contours_and_filter(mask, min_blob_size);
-    // cv::imshow("mask 4", mask);
-
-}
-
 void preprocessing::mean_horiz_deriv_threshold(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize,
                                                double mean_thresh, double horiz_deriv_thresh) {
 
@@ -388,7 +295,41 @@ void preprocessing::background_features_difference(cv::InputArray src_arr, cv::O
             dst.at<float>(y, x) = sqrt(mean_diff * mean_diff + stddev_diff * stddev_diff);
         }
     }
-
 }
+
+std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intensities(cv::InputArray src_arr) {
+    cv::Mat src = src_arr.getMat();
+
+    cv::Mat mat = cv::Mat::zeros(src.size(), src.type());
+    image_utils::cv32f_equalize_histogram(src, mat);
+    image_utils::cv32f_clahe(mat, mat);
+
+    cv::Mat bin;
+    cv::normalize(mat, bin, 0, 1, cv::NORM_MINMAX);
+    cv::boxFilter(bin, bin, CV_32F, cv::Size(5, 5));
+    cv::threshold(bin, bin, 0.7, 1.0, cv::THRESH_BINARY);
+
+    mat.setTo(0);
+    preprocessing::mean_horiz_deriv_threshold(bin, mat, 10, 0.3, 0.2);
+
+    mat.convertTo(mat, CV_8UC1, 255);
+    std::vector<std::vector<cv::Point> > contours;
+
+    contours = find_contours_and_filter(mat, 0.05, 0.2, 0.2);
+
+    mat.setTo(0);
+    cv::drawContours(mat, contours, -1, cv::Scalar(255), CV_FILLED);
+
+    cv::morphologyEx(mat, mat, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
+    cv::morphologyEx(mat, mat, cv::MORPH_ERODE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
+
+    return find_contours_and_filter(mat, 1, 1, 1);
+}
+
+std::vector<std::vector<cv::Point> > preprocessing::adaptative_target_detect_by_high_intensities(cv::InputArray src_arr) {
+    
+    return std::vector<std::vector<cv::Point> >();
+}
+
 
 } /* namespace sonar_target_tracking */
