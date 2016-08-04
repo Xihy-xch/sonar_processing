@@ -1,6 +1,16 @@
 #include "sonar_target_tracking/ImageUtils.hpp"
+#include <iostream>
+#include <fstream>
+#include <iterator>
 
 namespace sonar_target_tracking {
+
+cv::Mat image_utils::vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count) {
+    cv::Mat dst(beam_count, bin_count, CV_32F, (void*) src.data());
+    dst.convertTo(dst, CV_8U, 255);
+    return dst;
+}
+
 
 void image_utils::cv32f_equalize_histogram(cv::Mat src, cv::Mat dst) {
     cv::Mat aux;
@@ -35,7 +45,7 @@ void image_utils::estimate_clahe_parameters(const cv::Mat& src, float& clip_limi
         for (float j = 0.02; j <= 4; j += 0.02) {
             cv::Mat dst;
             clahe_mat8u(src, dst, j, cv::Size(i, i));
-            float entropy = entropy_8u(dst);
+            float entropy = entropy_8u(dst, 256);
             if (entropy > best_entropy) {
                 best_entropy = entropy;
                 clip_limit = j;
@@ -63,8 +73,8 @@ std::vector<float> image_utils::generate_insonification_pattern(const std::vecto
 }
 
 bool image_utils::load_insonification_pattern(std::string file_path, std::vector<float>& pattern) {
-    std::istream_iterator<float> start(input_file), end;
     std::ifstream input_file(file_path.c_str());
+    std::istream_iterator<float> start(input_file), end;
     std::vector<float> sonar_data(start, end);
 
     if (sonar_data.empty())
@@ -84,7 +94,7 @@ cv::Mat image_utils::create_stddev_filter_mask(const cv::Mat& src, uint mask_siz
     // check if the mask size is valid
     if (mask_size % 2 == 0 || mask_size < 3) {
         std::cout << "Mask size needs to be odd and greater or equal than 3." << std::endl;
-        return 0;
+        return cv::Mat();
     }
 
     // create the stddev filter

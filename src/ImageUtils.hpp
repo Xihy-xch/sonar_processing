@@ -5,9 +5,9 @@
 #include <opencv2/opencv.hpp>
 
 namespace sonar_target_tracking {
-    
+
 namespace image_utils {
-    
+
 template <typename T>
 std::vector<T> mat2vector(cv::Mat mat) {
     std::vector<T> array;
@@ -18,14 +18,10 @@ std::vector<T> mat2vector(cv::Mat mat) {
             array.insert(array.end(), (T*)mat.ptr<uchar>(i), (T*)mat.ptr<uchar>(i)+mat.cols);
         }
     }
-    return array;    
+    return array;
 }
 
-cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count) {
-    cv::Mat dst(beam_count, bin_count, CV_32F, (void*) src.data());
-    dst.convertTo(dst, CV_8U, 255);
-    return dst;
-}
+cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count);
 
 void cv32f_equalize_histogram(cv::Mat src, cv::Mat dst);
 
@@ -90,7 +86,7 @@ double otsu_thresh_8u(const cv::Mat& _src);
 
 
 } /* namespace image_utils */
- 
+
 } /* sonar_target_tracking image_utils */
 
 #endif /* ImageUtils_hpp */
