@@ -21,9 +21,18 @@ std::vector<T> mat2vector(cv::Mat mat) {
     return array;    
 }
 
+
 void cv32f_equalize_histogram(cv::Mat src, cv::Mat dst);
 
 void cv32f_clahe(cv::Mat src, cv::Mat dst, double clip_size = 40.0, cv::Size grid_size = cv::Size(8, 8));
+
+cv::Mat zeros_cols(cv::Mat src, std::vector<uint32_t> cols);
+
+cv::Mat horizontal_mirroring(cv::Mat src, std::vector<uint32_t> cols);
+
+float entropy_8u(const cv::Mat& src, int hist_size);
+
+double otsu_thresh_8u(const cv::Mat& _src);
 
 
 } /* namespace image_utils */
