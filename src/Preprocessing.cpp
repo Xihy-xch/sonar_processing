@@ -72,22 +72,32 @@ cv::Rect preprocessing::calc_horiz_roi(cv::Mat src) {
     cv::threshold(acc_sum, bin, thresh, 1.0, cv::THRESH_BINARY);
 
     std::vector<float> bin_vec = image_utils::mat2vector<float>(bin);
-    std::vector<float>::iterator it = std::find(bin_vec.begin(), bin_vec.end(), 1);
+    uint32_t new_x = std::find(bin_vec.begin(), bin_vec.end(), 1) - bin_vec.begin();
 
-    cv::Rect rc(cv::Point(0, 0), src.size());
-    rc.x = it - bin_vec.begin();
-    rc.width = acc_sum.cols - rc.x;
-
-    return rc;
+    return cv::Rect(cv::Point(new_x, 0), cv::Size(acc_sum.cols - new_x, src.rows));
 }
 
-double preprocessing::horiz_deriv(cv::Mat src) {
+double preprocessing::horiz_difference(cv::Mat src) {
     CV_Assert(src.depth() == CV_32F);
     float dsum = 0;
-    for (int y = 0; y < src.rows-1; y++) {
-        for (int x = 0; x < src.cols-1; x++) {
-            float d = src.at<float>(y, x) - src.at<float>(y,x+1);
-            dsum += abs(d);
+    uint32_t d = 2;
+    for (int y = 0; y < src.rows-d; y++) {
+        for (int x = 0; x < src.cols-d; x++) {
+            float dd = src.at<float>(y, x) - src.at<float>(y,x+d);
+            dsum += abs(dd);
+        }
+    }
+    return dsum;
+}
+
+double preprocessing::vert_difference(cv::Mat src) {
+    CV_Assert(src.depth() == CV_32F);
+    float dsum = 0;
+    uint32_t d = 2;
+    for (int x = 0; x < src.cols-d; x++) {
+        for (int y = 0; y < src.rows-d; y++) {
+            float dd = src.at<float>(y, x) - src.at<float>(y+d,x);
+            dsum += abs(dd);
         }
     }
     return dsum;
@@ -163,8 +173,8 @@ std::vector<std::vector<cv::Point> > preprocessing::find_contours_and_filter(cv:
     return filtering_contours;
 }
 
-void preprocessing::mean_horiz_deriv_threshold(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize,
-                                               double mean_thresh, double horiz_deriv_thresh) {
+void preprocessing::mean_horiz_difference_threshold(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize,
+                                               double mean_thresh, double horiz_difference_thresh) {
 
     cv::Mat src = src_arr.getMat();
 
@@ -179,18 +189,54 @@ void preprocessing::mean_horiz_deriv_threshold(cv::InputArray src_arr, cv::Outpu
 
             cv::Scalar sum = cv::sum(block);
             double m = sum[0] / (bsize * bsize);
-            double d = horiz_deriv(block) / (bsize * bsize);
+            double d = horiz_difference(block) / (bsize * bsize);
 
-            if (m > mean_thresh && d < horiz_deriv_thresh) {
+            if (m > mean_thresh && d < horiz_difference_thresh) {
                 dst(cv::Rect(x, y, bsize/4, bsize/4)).setTo(1.0);
             }
         }
     }
 }
 
+void preprocessing::mean_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize) {
+    cv::Mat src = src_arr.getMat();
+
+    dst_arr.create(src.size(), src.type());
+    cv::Mat dst = dst_arr.getMat();
+
+    for (int y = 0; y < src.rows-bsize; y+=bsize/4) {
+        for (int x = 0; x < src.cols-bsize; x+=bsize/4) {
+            cv::Rect roi = cv::Rect(x, y, bsize, bsize);
+            cv::Mat block;
+            src(roi).copyTo(block);
+            cv::Scalar mean = cv::mean(block);
+            cv::Mat means = cv::Mat::ones(cv::Size(bsize, bsize), block.type()) * mean[0];
+            dst(cv::Rect(x, y, bsize, bsize)) += means;
+        }
+    }
+}
+
+void preprocessing::difference_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize) {
+    cv::Mat src = src_arr.getMat();
+
+    dst_arr.create(src.size(), src.type());
+    cv::Mat dst = dst_arr.getMat();
+
+    for (int y = 0; y < src.rows-bsize; y++) {
+        for (int x = 0; x < src.cols-bsize; x++) {
+            cv::Rect roi = cv::Rect(x, y, bsize, bsize);
+            cv::Mat block;
+            src(roi).copyTo(block);
+            double x_diff = horiz_difference(block) / (bsize * bsize);
+            double y_diff = vert_difference(block) / (bsize * bsize);
+            dst.at<float>(y, x) += sqrt(x_diff * x_diff + y_diff * y_diff);
+        }
+    }
+}
+
 cv::Mat preprocessing::remove_ground_distance(cv::Mat src, cv::Rect& horiz_roi) {
     cv::Mat eqhist = cv::Mat::zeros(src.size(), src.type());
-    image_utils::cv32f_equalize_histogram(src, eqhist);
+    image_utils::equalize_histogram_32f(src, eqhist);
     cv::medianBlur(eqhist, eqhist, 5);
     cv::Mat result;
     src(horiz_roi = preprocessing::calc_horiz_roi(eqhist)).copyTo(result);
@@ -249,8 +295,8 @@ uint32_t preprocessing::find_first_higher(cv::Mat mat, uint32_t row) {
 std::vector<double> preprocessing::background_features_estimation(cv::Mat src, uint32_t bsize) {
     cv::Rect roi;
     cv::Mat mat = remove_ground_distance_accurate(src, roi);
-    image_utils::cv32f_equalize_histogram(mat, mat);
-    image_utils::cv32f_clahe(mat, mat);
+    image_utils::equalize_histogram_32f(mat, mat);
+    image_utils::clahe_32f(mat, mat);
 
     double mean_sum = 0;
     double stddev_sum = 0;
@@ -301,8 +347,10 @@ std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intens
     cv::Mat src = src_arr.getMat();
 
     cv::Mat mat = cv::Mat::zeros(src.size(), src.type());
-    image_utils::cv32f_equalize_histogram(src, mat);
-    image_utils::cv32f_clahe(mat, mat);
+    image_utils::equalize_histogram_32f(src, mat);
+    image_utils::clahe_32f(mat, mat);
+
+    cv::imshow("mat", mat);
 
     cv::Mat bin;
     cv::normalize(mat, bin, 0, 1, cv::NORM_MINMAX);
@@ -310,7 +358,7 @@ std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intens
     cv::threshold(bin, bin, 0.7, 1.0, cv::THRESH_BINARY);
 
     mat.setTo(0);
-    preprocessing::mean_horiz_deriv_threshold(bin, mat, 10, 0.3, 0.2);
+    preprocessing::mean_horiz_difference_threshold(bin, mat, 10, 0.3, 0.2);
 
     mat.convertTo(mat, CV_8UC1, 255);
     std::vector<std::vector<cv::Point> > contours;
@@ -326,8 +374,53 @@ std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intens
     return find_contours_and_filter(mat, 1, 1, 1);
 }
 
+void preprocessing::high_intensities_clustering(cv::InputArray src_arr) {
+    cv::Mat src = src_arr.getMat();
+}
+
 std::vector<std::vector<cv::Point> > preprocessing::adaptative_target_detect_by_high_intensities(cv::InputArray src_arr) {
-    
+    static int index = 0;
+    cv::Mat src = src_arr.getMat();
+
+    uint32_t bsize = src.cols/4;
+    cv::Mat src_8u;
+    src.convertTo(src_8u, CV_8U, 255);
+
+    for (int x = 0; x < src.cols; x+=bsize) {
+        uint32_t r = (src.cols > x + bsize) ? bsize : src.cols - x;
+        cv::Rect roi = cv::Rect(x, 0, r, src.rows);
+        cv::Mat block = src_8u(roi);
+        image_utils::adaptative_clahe(block, block, cv::Size(8, 8), 7.5);
+        cv::blur(block, block, cv::Size(5, 5));
+        cv::threshold(block, block, image_utils::otsu_thresh_8u(block) * 1.5, 255, cv::THRESH_BINARY);
+    }
+
+    cv::imshow("src_8u", src_8u);
+
+    // cv::Mat bin;
+    // src_8u.convertTo(bin, CV_32F, 1/ 255.0);
+    // bin.convertTo(bin, CV_32F, 1/255.0);
+    // cv::Mat im_mean = cv::Mat::zeros(src.size(), src.type());
+    // mean_filter(bin, im_mean, 5);
+    // cv::normalize(im_mean, im_mean, 0, 1.0, cv::NORM_MINMAX);
+    // cv::imshow("im_mean", im_mean);
+    //
+    // cv::Mat im_mean_bin;
+    // cv::threshold(im_mean, im_mean_bin, image_utils::otsu_thresh_32f(im_mean) * 1.5, 1.0, cv::THRESH_BINARY);
+    // cv::imshow("im_mean_bin", im_mean_bin);
+    // im_mean_bin.convertTo(im_mean_bin, CV_8U, 255);
+    //
+    // cv::Mat im_diff = cv::Mat::zeros(src.size(), src.type());
+    // difference_filter(bin, im_diff, 10);
+    // cv::normalize(im_diff, im_diff, 0, 1.0, cv::NORM_MINMAX);
+    // im_diff = 1.0 - im_diff;
+    // cv::imshow("im_diff", im_diff);
+
+    // cv::Mat im_diff_mean = cv::Mat::zeros(im_diff.size(), im_diff.type());
+    // im_diff.copyTo(im_diff_mean, im_mean_bin);
+    //
+    // cv::imshow("im_diff_mean", im_diff_mean);
+
     return std::vector<std::vector<cv::Point> >();
 }
 

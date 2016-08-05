@@ -23,9 +23,9 @@ std::vector<T> mat2vector(cv::Mat mat) {
 
 cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count);
 
-void cv32f_equalize_histogram(cv::Mat src, cv::Mat dst);
+void equalize_histogram_32f(cv::Mat src, cv::Mat dst);
 
-void cv32f_clahe(cv::Mat src, cv::Mat dst, double clip_size = 40.0, cv::Size grid_size = cv::Size(8, 8));
+void clahe_32f(cv::Mat src, cv::Mat dst, double clip_size = 40.0, cv::Size grid_size = cv::Size(8, 8));
 
 /**
  * This function minimizes the intensity offsets on the registered areas using the CLAHE technique
@@ -80,9 +80,15 @@ cv::Mat zeros_cols(cv::Mat src, std::vector<uint32_t> cols);
 
 cv::Mat horizontal_mirroring(cv::Mat src, std::vector<uint32_t> cols);
 
-float entropy_8u(const cv::Mat& src, int hist_size);
+double otsu_thresh_8u(const cv::Mat& src);
 
-double otsu_thresh_8u(const cv::Mat& _src);
+double otsu_thresh_32f(const cv::Mat& src);
+
+cv::Mat to_mat8u(const cv::Mat& src, double scale);
+
+float entropy(const cv::Mat& src, int hist_size = 256);
+
+void adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size size = cv::Size(8, 8), float entropy_thresh = 7.5);
 
 
 } /* namespace image_utils */

@@ -11,10 +11,15 @@ cv::Rect calc_horiz_roi_old(cv::Mat src);
 
 cv::Rect calc_horiz_roi(cv::Mat src);
 
-double horiz_deriv(cv::Mat src);
+double horiz_difference(cv::Mat src);
+double vert_difference(cv::Mat src);
 
-void mean_horiz_deriv_threshold(cv::InputArray src, cv::OutputArray dst, uint32_t bsize,
+void mean_horiz_difference_threshold(cv::InputArray src, cv::OutputArray dst, uint32_t bsize,
                                 double mean_thresh, double horiz_deriv_thresh);
+
+void mean_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize);
+
+void difference_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize);
 
 std::vector<std::vector<cv::Point> > find_contours_and_filter(cv::Mat src, double area_factor, double width_factor, double height_factor);
 
@@ -33,6 +38,8 @@ void background_features_difference(cv::InputArray src_arr, cv::OutputArray dst_
 std::vector<cv::Point> find_biggest_contour(cv::Mat src);
 
 std::vector<std::vector<cv::Point> > target_detect_by_high_intensities(cv::InputArray src_arr);
+
+void high_intensities_clustering(cv::InputArray src_arr);
 
 std::vector<std::vector<cv::Point> > adaptative_target_detect_by_high_intensities(cv::InputArray src_arr);
 

@@ -11,21 +11,19 @@ cv::Mat image_utils::vector32f_to_mat8u(const std::vector<float>& src, int beam_
     return dst;
 }
 
-
-void image_utils::cv32f_equalize_histogram(cv::Mat src, cv::Mat dst) {
+void image_utils::equalize_histogram_32f(cv::Mat src, cv::Mat dst) {
+    CV_Assert(src.depth() == CV_32F);
     cv::Mat aux;
     src.convertTo(aux, CV_8UC1, 255);
     cv::equalizeHist(aux, aux);
     aux.convertTo(dst, CV_32F,  1.0 / 255);
 }
 
-void image_utils::cv32f_clahe(cv::Mat src, cv::Mat dst, double clip_size, cv::Size grid_size) {
+void image_utils::clahe_32f(cv::Mat src, cv::Mat dst, double clip_size, cv::Size grid_size) {
+    CV_Assert(src.depth() == CV_32F);
     cv::Mat aux;
     src.convertTo(aux, CV_8UC1, 255);
-
-    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clip_size, grid_size);
-    clahe->apply(aux, aux);
-
+    clahe_mat8u(aux, aux, clip_size, grid_size);
     aux.convertTo(dst, CV_32F,  1.0 / 255);
 }
 
@@ -45,7 +43,7 @@ void image_utils::estimate_clahe_parameters(const cv::Mat& src, float& clip_limi
         for (float j = 0.02; j <= 4; j += 0.02) {
             cv::Mat dst;
             clahe_mat8u(src, dst, j, cv::Size(i, i));
-            float entropy = entropy_8u(dst, 256);
+            float entropy = image_utils::entropy(dst, 256);
             if (entropy > best_entropy) {
                 best_entropy = entropy;
                 clip_limit = j;
@@ -149,22 +147,21 @@ cv::Mat image_utils::horizontal_mirroring(cv::Mat src, std::vector<uint32_t> col
     return mat;
 }
 
-float image_utils::entropy_8u(const cv::Mat& src, int hist_size) {
+float image_utils::entropy(const cv::Mat& src, int hist_size) {
     // compute the histogram
-    float range[] = {0, 256};
-    const float* hist_range = {range};
-    bool uniform = true; bool accumulate = false;
     cv::Mat hist;
-
-    cv::calcHist(&src, 1, 0, cv::Mat(), hist, 1, &hist_size, &hist_range, uniform, accumulate);
-    hist /= src.total();
+    cv::calcHist(&src, 1, 0, cv::Mat(), hist, 1, &hist_size, 0);
+    cv::Mat prob = hist / src.total();
 
     // compute the image entropy
-    cv::Mat log_p;
-    cv::log(hist, log_p);
+    float sum = 0;
+    for (float* ptr = (float*)prob.datastart; ptr != (float*)prob.dataend; ptr++) {
+        float p = *ptr;
+        p = (p == 0) ? FLT_EPSILON : p;
+        sum += p * log2f(p);
+    }
 
-    float entropy = -1 * cv::sum(hist.mul(log_p)).val[0];
-    return entropy;
+    return -sum;
 }
 
 double image_utils::otsu_thresh_8u(const cv::Mat& _src)
@@ -213,6 +210,40 @@ double image_utils::otsu_thresh_8u(const cv::Mat& _src)
     }
 
     return max_val;
+}
+
+cv::Mat image_utils::to_mat8u(const cv::Mat& src, double scale) {
+    cv::Mat dst = cv::Mat::zeros(src.size(), CV_8UC(src.channels()));
+    src.convertTo(dst, CV_8UC(src.channels()), scale);
+    return dst;
+}
+
+double image_utils::otsu_thresh_32f(const cv::Mat& src) {
+    return otsu_thresh_8u(to_mat8u(src, 255.0)) / 255.0;
+}
+
+void image_utils::adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size size, float entropy_thresh) {
+    cv::Mat src = src_arr.getMat();
+    cv::Mat dst = dst_arr.getMat();
+
+    float last_entropy = 0;
+    for (float clip_limit = FLT_EPSILON; clip_limit < 10; clip_limit += 0.2) {
+        clahe_mat8u(src, dst, clip_limit, size);
+
+        float current_entropy = entropy(dst);
+
+        if (current_entropy >= entropy_thresh) {
+            break;
+        }
+
+        float difference_entropy = last_entropy - current_entropy;
+
+        if (sqrt(difference_entropy * difference_entropy) < 0.01) {
+            break;
+        }
+
+        last_entropy = current_entropy;
+    }
 }
 
 } /* sonar_target_tracking image_utils */
