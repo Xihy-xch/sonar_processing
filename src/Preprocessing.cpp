@@ -78,37 +78,61 @@ cv::Rect preprocessing::calc_horiz_roi(cv::Mat src) {
 }
 
 double preprocessing::horiz_difference(cv::Mat src) {
-    CV_Assert(src.depth() == CV_32F);
+    CV_Assert(src.depth() == CV_32F || src.depth() == CV_8U);
+
+    cv::Mat mat;
+
+    if (src.depth() == CV_8U) {
+        src.convertTo(mat, CV_32F);
+    }
+    else {
+        mat = src;
+    }
+
     float dsum = 0;
-    uint32_t d = 2;
-    for (int y = 0; y < src.rows-d; y++) {
-        for (int x = 0; x < src.cols-d; x++) {
-            float dd = src.at<float>(y, x) - src.at<float>(y,x+d);
+    for (int y = 0; y < src.rows-1; y++) {
+        for (int x = 0; x < src.cols-1; x++) {
+            float dd = mat.at<float>(y, x) - mat.at<float>(y,x+1);
             dsum += abs(dd);
         }
     }
-    return dsum;
+    return dsum / src.total();
 }
 
 double preprocessing::vert_difference(cv::Mat src) {
-    CV_Assert(src.depth() == CV_32F);
+    CV_Assert(src.depth() == CV_32F || src.depth() == CV_8U);
+
+    cv::Mat mat;
+
+    if (src.depth() == CV_8U) {
+        src.convertTo(mat, CV_32F);
+    }
+    else {
+        mat = src;
+    }
+
     float dsum = 0;
-    uint32_t d = 2;
-    for (int x = 0; x < src.cols-d; x++) {
-        for (int y = 0; y < src.rows-d; y++) {
-            float dd = src.at<float>(y, x) - src.at<float>(y+d,x);
-            dsum += abs(dd);
+    for (int x = 0; x < src.cols-1; x++) {
+        for (int y = 0; y < src.rows-1; y++) {
+            dsum += abs(mat.at<float>(y, x) - mat.at<float>(y,x+1));
         }
     }
-    return dsum;
+    return dsum / src.total();
+}
+
+std::vector<std::vector<cv::Point> > preprocessing::find_contours(cv::Mat src) {
+    std::vector<std::vector<cv::Point> > contours;
+    cv::Mat im_contours;
+    src.copyTo(im_contours);
+
+    cv::findContours(im_contours, contours, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+    return contours;
+
 }
 
 std::vector<cv::Point> preprocessing::find_biggest_contour(cv::Mat src) {
-    std::vector<std::vector<cv::Point> > contours;
-
-    cv::Mat im_contours;
-    src.copyTo(im_contours);
-    cv::findContours(im_contours, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+    std::vector<std::vector<cv::Point> > contours = find_contours(src);
 
     std::vector<cv::Point> biggest_contour;
     int last_size = 0;
@@ -125,13 +149,9 @@ std::vector<cv::Point> preprocessing::find_biggest_contour(cv::Mat src) {
     return biggest_contour;
 }
 
-std::vector<std::vector<cv::Point> > preprocessing::find_contours_and_filter(cv::Mat src, double area_factor, double width_factor, double height_factor) {
-    std::vector<std::vector<cv::Point> > contours, filtering_contours, nonzero_area_contours;
-
-    cv::Mat im_contours;
-    src.copyTo(im_contours);
-
-    cv::findContours(im_contours, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+std::vector<std::vector<cv::Point> > preprocessing::adaptative_find_contours_and_filter(cv::Mat src, double area_factor, double width_factor, double height_factor) {
+    std::vector<std::vector<cv::Point> > filtering_contours, nonzero_area_contours;
+    std::vector<std::vector<cv::Point> > contours = find_contours(src);
 
     std::vector<double> height_vals;
     std::vector<double> width_vals;
@@ -173,7 +193,25 @@ std::vector<std::vector<cv::Point> > preprocessing::find_contours_and_filter(cv:
     return filtering_contours;
 }
 
-void preprocessing::mean_horiz_difference_threshold(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize,
+std::vector<std::vector<cv::Point> > preprocessing::find_contours_and_filter(cv::Mat src, cv::Size min_size) {
+    std::vector<std::vector<cv::Point> > filtering_contours;
+    std::vector<std::vector<cv::Point> > contours = find_contours(src);
+
+    int min_area = min_size.width * min_size.height;
+
+    for( int i = 0; i < contours.size(); i++ ) {
+        cv::Rect rc = cv::boundingRect( cv::Mat(contours[i]) );
+        if (cv::contourArea(contours[i]) > min_area &&
+            rc.width > min_size.width &&
+            rc.height > min_size.height) {
+            filtering_contours.push_back(contours[i]);
+        }
+    }
+
+    return filtering_contours;
+}
+
+void preprocessing::mean_horiz_difference_thresholding(cv::InputArray src_arr, cv::OutputArray dst_arr, uint32_t bsize,
                                                double mean_thresh, double horiz_difference_thresh) {
 
     cv::Mat src = src_arr.getMat();
@@ -189,7 +227,7 @@ void preprocessing::mean_horiz_difference_threshold(cv::InputArray src_arr, cv::
 
             cv::Scalar sum = cv::sum(block);
             double m = sum[0] / (bsize * bsize);
-            double d = horiz_difference(block) / (bsize * bsize);
+            double d = horiz_difference(block);
 
             if (m > mean_thresh && d < horiz_difference_thresh) {
                 dst(cv::Rect(x, y, bsize/4, bsize/4)).setTo(1.0);
@@ -227,8 +265,8 @@ void preprocessing::difference_filter(cv::InputArray src_arr, cv::OutputArray ds
             cv::Rect roi = cv::Rect(x, y, bsize, bsize);
             cv::Mat block;
             src(roi).copyTo(block);
-            double x_diff = horiz_difference(block) / (bsize * bsize);
-            double y_diff = vert_difference(block) / (bsize * bsize);
+            double x_diff = horiz_difference(block);
+            double y_diff = vert_difference(block);
             dst.at<float>(y, x) += sqrt(x_diff * x_diff + y_diff * y_diff);
         }
     }
@@ -358,12 +396,12 @@ std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intens
     cv::threshold(bin, bin, 0.7, 1.0, cv::THRESH_BINARY);
 
     mat.setTo(0);
-    preprocessing::mean_horiz_difference_threshold(bin, mat, 10, 0.3, 0.2);
+    preprocessing::mean_horiz_difference_thresholding(bin, mat, 10, 0.3, 0.2);
 
     mat.convertTo(mat, CV_8UC1, 255);
     std::vector<std::vector<cv::Point> > contours;
 
-    contours = find_contours_and_filter(mat, 0.05, 0.2, 0.2);
+    contours = adaptative_find_contours_and_filter(mat, 0.05, 0.2, 0.2);
 
     mat.setTo(0);
     cv::drawContours(mat, contours, -1, cv::Scalar(255), CV_FILLED);
@@ -371,58 +409,162 @@ std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intens
     cv::morphologyEx(mat, mat, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
     cv::morphologyEx(mat, mat, cv::MORPH_ERODE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
 
-    return find_contours_and_filter(mat, 1, 1, 1);
+    return adaptative_find_contours_and_filter(mat, 1, 1, 1);
 }
 
-void preprocessing::high_intensities_clustering(cv::InputArray src_arr) {
+void preprocessing::contrast_filter(cv::InputArray src_arr, cv::OutputArray dst_arr) {
     cv::Mat src = src_arr.getMat();
-}
+    dst_arr.create(src.size(), src.type());
+    cv::Mat dst = dst_arr.getMat();
 
-std::vector<std::vector<cv::Point> > preprocessing::adaptative_target_detect_by_high_intensities(cv::InputArray src_arr) {
-    static int index = 0;
-    cv::Mat src = src_arr.getMat();
+    src.copyTo(dst);
 
-    uint32_t bsize = src.cols/4;
-    cv::Mat src_8u;
-    src.convertTo(src_8u, CV_8U, 255);
+    const double max_entropy_thesh = 7.5;
+    const uint32_t bsize = src.cols/2;
 
-    for (int x = 0; x < src.cols; x+=bsize) {
+    for (int x = 0, i = 0; x < src.cols; x+=bsize, i++) {
         uint32_t r = (src.cols > x + bsize) ? bsize : src.cols - x;
         cv::Rect roi = cv::Rect(x, 0, r, src.rows);
-        cv::Mat block = src_8u(roi);
-        image_utils::adaptative_clahe(block, block, cv::Size(8, 8), 7.5);
-        cv::blur(block, block, cv::Size(5, 5));
-        cv::threshold(block, block, image_utils::otsu_thresh_8u(block) * 1.5, 255, cv::THRESH_BINARY);
+        cv::Mat block = dst(roi);
+        image_utils::adaptative_clahe(block, block, cv::Size(8, 8), max_entropy_thesh);
+        cv::blur(block, block, cv::Size(3, 3));
     }
-
-    cv::imshow("src_8u", src_8u);
-
-    // cv::Mat bin;
-    // src_8u.convertTo(bin, CV_32F, 1/ 255.0);
-    // bin.convertTo(bin, CV_32F, 1/255.0);
-    // cv::Mat im_mean = cv::Mat::zeros(src.size(), src.type());
-    // mean_filter(bin, im_mean, 5);
-    // cv::normalize(im_mean, im_mean, 0, 1.0, cv::NORM_MINMAX);
-    // cv::imshow("im_mean", im_mean);
-    //
-    // cv::Mat im_mean_bin;
-    // cv::threshold(im_mean, im_mean_bin, image_utils::otsu_thresh_32f(im_mean) * 1.5, 1.0, cv::THRESH_BINARY);
-    // cv::imshow("im_mean_bin", im_mean_bin);
-    // im_mean_bin.convertTo(im_mean_bin, CV_8U, 255);
-    //
-    // cv::Mat im_diff = cv::Mat::zeros(src.size(), src.type());
-    // difference_filter(bin, im_diff, 10);
-    // cv::normalize(im_diff, im_diff, 0, 1.0, cv::NORM_MINMAX);
-    // im_diff = 1.0 - im_diff;
-    // cv::imshow("im_diff", im_diff);
-
-    // cv::Mat im_diff_mean = cv::Mat::zeros(im_diff.size(), im_diff.type());
-    // im_diff.copyTo(im_diff_mean, im_mean_bin);
-    //
-    // cv::imshow("im_diff_mean", im_diff_mean);
-
-    return std::vector<std::vector<cv::Point> >();
 }
 
+void preprocessing::gradient_filter(cv::InputArray src_arr, cv::OutputArray dst_arr) {
+    cv::Mat src = src_arr.getMat();
+
+    dst_arr.create(src.size(), src.type());
+    cv::Mat dst = dst_arr.getMat();
+
+    cv::Mat Gx, Gy;
+    cv::Mat Gx2, Gy2;
+
+    cv::Sobel( src, Gx, CV_16S, 1, 0, 3, 1, 0, cv::BORDER_DEFAULT );
+    cv::convertScaleAbs( Gx, Gx2 );
+
+    cv::Sobel( src, Gy, CV_16S, 0, 1, 3, 1, 0, cv::BORDER_DEFAULT );
+    cv::convertScaleAbs( Gy, Gy2 );
+
+    cv::addWeighted( Gx2, 0.5, Gy2, 0.5, 0, dst );
+}
+
+void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::InputArray src_hc_arr, cv::OutputArray dst_arr) {
+    cv::Mat src = src_arr.getMat();
+    cv::Mat src_hc = src_hc_arr.getMat();
+
+    dst_arr.create(src.size(), CV_8UC1);
+    cv::Mat dst = dst_arr.getMat();
+    dst.setTo(0);
+
+    const uint32_t max_win_width = 64;
+    const uint32_t max_win_height = 64;
+    const double high_intensities_thesh = 190;
+    const double high_intensities_mean_thresh = 0.01;
+    const double gradient_thresh = 85.0;
+    const double difference_thresh = 50.0;
+
+    uint32_t src_width = src.cols;
+    uint32_t src_height = src.rows;
+
+    for (int y = 0; y < src_height; y+=max_win_height/2) {
+        for (int x = 0; x < src_width; x+=max_win_width/2) {
+
+            uint32_t win_width = (src_width > x + max_win_width) ? max_win_width : src_width - x;
+            uint32_t win_height = (src_height > y + max_win_height) ? max_win_height : src_height - y;
+
+            if (win_width < max_win_width / 2) continue;
+            if (win_height < max_win_height / 2) continue;
+
+            cv::Rect win_rect = cv::Rect(x, y, win_width, win_height);
+
+            cv::Mat max_sum;
+            src_hc(win_rect).copyTo(max_sum);
+            cv::threshold(max_sum, max_sum, high_intensities_thesh, 1, cv::THRESH_BINARY);
+
+            if ((cv::sum(max_sum)[0] / max_sum.total()) > high_intensities_mean_thresh) {
+                cv::Mat win;
+                src(win_rect).convertTo(win, CV_8U, 255);
+                cv::blur(win, win, cv::Size(15, 15));
+
+                cv::Mat grad, grad_bin;
+                gradient_filter(win, grad);
+
+                cv::normalize(grad, grad, 0, 255, cv::NORM_MINMAX);
+                cv::threshold(grad, grad_bin, gradient_thresh, 255, cv::THRESH_BINARY);
+
+                double vert_diff = vert_difference(grad_bin);
+                double horiz_diff = horiz_difference(grad_bin);
+                double diff = sqrt(vert_diff * vert_diff + horiz_diff * horiz_diff);
+
+                if (diff < difference_thresh) dst(win_rect) += grad_bin;
+            }
+        }
+    }
+
+    cv::morphologyEx(dst, dst, cv::MORPH_OPEN,
+                     cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(5, 5)),
+                     cv::Point(-1, -1), 1);
+}
+
+std::vector<std::vector<cv::Point> > preprocessing::find_target_contours(cv::InputArray src_arr) {
+    cv::Mat src, src_8u, src_hc;
+    src = src_arr.getMat();
+    src.convertTo(src_8u, CV_8U, 255);
+    contrast_filter(src_8u, src_hc);
+
+    cv::Mat hig_mask;
+    weak_target_thresholding(src, src_hc, hig_mask);
+
+    std::vector<std::vector<cv::Point> > contours = find_contours_and_filter(hig_mask, cv::Size(src.cols * 0.025, src.rows * 0.025));
+
+    hig_mask.setTo(0);
+    cv::drawContours(hig_mask, contours, -1, cv::Scalar(255), CV_FILLED);
+
+    cv::morphologyEx(hig_mask, hig_mask, cv::MORPH_CLOSE,
+                     cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)),
+                     cv::Point(-1, -1), 1);
+
+    contours = find_contours(hig_mask);
+
+    if (contours.empty()) {
+        return std::vector<std::vector<cv::Point> >();
+    }
+
+    std::vector<cv::Rect> rects;
+    cv::Mat mean_vals = cv::Mat::zeros(cv::Size(1, contours.size()), CV_32F);
+    for( int i = 0; i < contours.size(); i++ ) {
+        cv::Rect rc = cv::boundingRect( cv::Mat(contours[i]) );
+        rects.push_back(rc);
+        if (rc.width > 50 && rc.height > 50) mean_vals.at<float>(i, 1) = cv::mean(src_8u(rc))[0];
+    }
+
+    double min, max;
+    cv::minMaxLoc(mean_vals, &min, &max);
+
+    double thresh = (max + min) / 2;
+
+    hig_mask.setTo(0);
+    for( int i = 0; i < mean_vals.rows; i++ ) {
+        if (cv::mean(src_8u(rects[i]))[0] > thresh) {
+            cv::rectangle(hig_mask, rects[i], cv::Scalar(255), CV_FILLED);
+        }
+    }
+
+    cv::morphologyEx(hig_mask, hig_mask, cv::MORPH_CLOSE,
+                 cv::getStructuringElement(cv::MORPH_RECT,cv::Size(40, 40)),
+                 cv::Point(-1, -1), 1);
+
+    cv::Mat hig_image = cv::Mat::zeros(src_8u.size(), src_8u.type());
+
+    contours = find_contours(hig_mask);
+    std::vector<std::vector<cv::Point> > contours_result;
+    for( int i = 0; i < contours.size(); i++ ) {
+        cv::Rect rc = cv::boundingRect( cv::Mat(contours[i]) );
+        if (rc.width > 30 && rc.height > 30) contours_result.push_back(contours[i]);
+    }
+
+    return contours_result;
+}
 
 } /* namespace sonar_target_tracking */

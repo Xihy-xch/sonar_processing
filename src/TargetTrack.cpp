@@ -29,7 +29,7 @@ void TargetTrack::apply() {
 
     cv::Mat mat = preprocessing::remove_ground_distance(src, horiz_roi_);
 
-    std::vector<std::vector<cv::Point> > hi_contours = preprocessing::target_detect_by_high_intensities(mat);
+    std::vector<std::vector<cv::Point> > hi_contours = preprocessing::find_target_contours(mat);
 
     cv::Mat result = cv::Mat::zeros(cv::Size(bin_count_, beam_count_), CV_32F);
 
@@ -47,8 +47,8 @@ void TargetTrack::remove_background(std::vector<double> features, uint32_t bsize
     cv::Mat src = cv::Mat(bins_).reshape(1, beam_count_);
     cv::Mat mat = preprocessing::remove_ground_distance_accurate(src, horiz_roi_);
 
-    image_utils::cv32f_equalize_histogram(mat, mat);
-    image_utils::cv32f_clahe(mat, mat);
+    image_utils::equalize_histogram_32f(mat, mat);
+    image_utils::clahe_32f(mat, mat);
 
     cv::Mat diff_values;
     preprocessing::background_features_difference(mat, diff_values, features, bsize);
