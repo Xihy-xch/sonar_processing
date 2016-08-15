@@ -224,6 +224,7 @@ double image_utils::otsu_thresh_32f(const cv::Mat& src) {
 
 void image_utils::adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size size, float entropy_thresh) {
     cv::Mat src = src_arr.getMat();
+    dst_arr.create(src.size(), src.type());
     cv::Mat dst = dst_arr.getMat();
 
     float last_entropy = 0;
@@ -236,9 +237,7 @@ void image_utils::adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_a
             break;
         }
 
-        float difference_entropy = last_entropy - current_entropy;
-
-        if (sqrt(difference_entropy * difference_entropy) < 0.01) {
+        if (fabs(last_entropy - current_entropy) < 0.01) {
             break;
         }
 
