@@ -110,6 +110,8 @@ void houghlines_mask(cv::InputArray src_arr, cv::OutputArray dst_arr,
                     double rho = 1.0, double theta = CV_PI/180.0, int threshold = 10, 
                     double min_line_length = 20, double max_line_gap = 40);
 
+void remove_blobs(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size min_size, int mode = CV_RETR_EXTERNAL, bool convex_hull = false);
+
 std::vector<std::vector<cv::Point> > remove_low_intensities_contours(cv::InputArray src_arr, std::vector<std::vector<cv::Point> > contours);
 
 } /* namespace preprocessing */

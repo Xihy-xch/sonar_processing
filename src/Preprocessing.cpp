@@ -632,7 +632,7 @@ void preprocessing::simple_thresholding(cv::InputArray src_arr, cv::OutputArray 
     for (int i = 0; i < rcs.size(); i++) {
         double max_p = max_vals[i] / max_el;
 
-        if (max_p > 0.5) {
+        if (max_p > 0.3) {
             double min = min_vals[i];
             double max = max_vals[i];
             double thresh = alpha * (max - min) + min;
@@ -713,6 +713,20 @@ std::vector<std::vector<cv::Point> > preprocessing::remove_low_intensities_conto
     return result;
 }
 
+void preprocessing::remove_blobs(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size min_size, int mode, bool convex_hull) {
+    cv::Mat src = src_arr.getMat();
+    dst_arr.create(src.size(), CV_8UC1);
+
+
+    std::vector<std::vector<cv::Point> > contours = find_contours_and_filter(src, min_size, mode, convex_hull);
+
+    if (!contours.empty()) {
+        cv::Mat dst = dst_arr.getMat();
+        dst.setTo(0);
+        cv::drawContours(dst, contours, -1, cv::Scalar(255), CV_FILLED);
+    }
+}
+
 void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputArray dst_arr) {
     cv::Mat src = src_arr.getMat();
 
@@ -721,19 +735,20 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
     dst.setTo(0);
 
     cv::Mat grad, src_sm, grad_bin;
-    cv::boxFilter(src, src_sm, CV_8U, cv::Size(15, 15));
+    cv::GaussianBlur(src, src_sm, cv::Size(5, 5), 0);
+    cv::boxFilter(src_sm, src_sm, CV_8U, cv::Size(11, 11));
     gradient_filter(src_sm, grad);
-    simple_thresholding(grad, grad_bin, 0.3);
 
-    cv::morphologyEx(grad_bin, grad_bin, cv::MORPH_OPEN,
-                     cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
+    cv::normalize(grad, grad, 0, 255, cv::NORM_MINMAX);
 
+    grad-=src_sm;
+    cv::normalize(grad, grad, 0, 255, cv::NORM_MINMAX);
+
+    cv::medianBlur(grad, grad, 7);
+    simple_thresholding(grad, grad_bin, 0.15);
     houghlines_mask(grad_bin, grad_bin);
 
-    std::vector<std::vector<cv::Point> > contours;
-    contours = find_contours_and_filter(grad_bin, cv::Size(src.cols * 0.075, src.rows * 0.075));
-    grad_bin.setTo(0);
-    cv::drawContours(grad_bin, contours, -1, cv::Scalar(255), CV_FILLED);
+    remove_blobs(grad_bin, grad_bin, cv::Size(src.cols * 0.15, src.rows * 0.15));
 
     cv::Mat grad_mask = cv::Mat::zeros(src.size(), CV_8UC1);
 
@@ -746,75 +761,54 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
         for (int x = 0; x < src.cols-bsize; x+=bstep) {
             cv::Rect roi = cv::Rect(x, y, bsize, bsize);
             double m = (cv::mean(grad_bin(roi))[0] / 255.0) ;
-            if (m > 0.5) grad_mask(roi).setTo(255);
+            if (m > 0.3) grad_mask(roi).setTo(255);
         }
     }
 
-    cv::morphologyEx(grad_mask, grad_mask, cv::MORPH_CLOSE,
-                     cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(50, 50)));
-
-    contours = find_contours_and_filter(grad_mask, cv::Size(src.cols * 0.075, src.rows * 0.075), CV_RETR_EXTERNAL, true);
-    contours = remove_low_intensities_contours(src, contours);
+    std::vector<std::vector<cv::Point> > contours = find_contours_and_filter(grad_mask, cv::Size(src.cols * 0.15, src.rows * 0.15), CV_RETR_EXTERNAL, true);
 
     cv::Mat mask = cv::Mat::zeros(src.size(), CV_8UC1);
     cv::drawContours(mask, contours, -1, cv::Scalar(255), CV_FILLED);
 
     cv::Mat final_mask = cv::Mat::zeros(src.size(), src.type());
+    final_mask = mask;
 
     int contours_cnt  = 0;
     for (int i = 0; i < contours.size(); i++) {
-
+    
         cv::Rect rc = cv::boundingRect(contours[i]);
         mask.setTo(0);
         cv::drawContours(mask, contours, i, cv::Scalar(255), CV_FILLED);
-
-        uint32_t bsize = 64;
         grad_bin.setTo(0);
+        grad.copyTo(grad_bin, mask);
 
-        for (uint32_t y = rc.tl().y; y < rc.br().y; y += bsize / 16){
-            for (uint32_t x = rc.tl().x; x < rc.br().x; x +=bsize / 16){
+        double min, max;
+        cv::minMaxLoc(grad_bin, &min, &max, NULL, NULL, mask);
 
-                cv::Rect roi(utilities::border_fit(x, src.cols, bsize),
-                             utilities::border_fit(y, src.rows, bsize),
-                             bsize, bsize);
+        double thresh = 0.15 * (max - min) + min;
+        cv::threshold(grad_bin, grad_bin, thresh, 255, cv::THRESH_BINARY);
 
-                if ((cv::mean(mask(roi))[0] / 255.0) >= 1){
-                    cv::Mat block;
-                    grad(roi).copyTo(block);
+        cv::morphologyEx(grad_bin, mask, cv::MORPH_OPEN, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
 
-                    double min, max;
-                    cv::minMaxLoc(block, &min, &max);
-
-                    cv::Mat block_bin;
-                    double thresh = 0.3 * (max - min) + min;
-                    cv::threshold(block, block_bin, thresh, 255, cv::THRESH_BINARY);
-                    grad_bin(roi) += block_bin;
-                }
-            }
-        }
-
-        mask.setTo(0);
-        cv::morphologyEx(grad_bin, mask, cv::MORPH_OPEN,
-                     cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
-
-        std::vector<std::vector<cv::Point> > contours2 = find_contours_and_filter(mask, cv::Size(src.cols * 0.025, src.rows * 0.025), CV_RETR_LIST);
-
-        mask.setTo(0);
-        cv::drawContours(mask, contours2, -1, cv::Scalar(255), CV_FILLED);
+        remove_blobs(grad_bin, grad_bin, cv::Size(src.cols * 0.025, src.rows * 0.025), CV_RETR_LIST);
 
         houghlines_mask(mask, mask, 1, CV_PI/180, 20, 10, 90);
 
-        contours2 = find_contours(mask, CV_RETR_EXTERNAL, true);
-        cv::drawContours(mask, contours2, -1, cv::Scalar(255), CV_FILLED);
+        std::vector<std::vector<cv::Point> > contours2;
+        contours2 = find_contours_and_filter(mask, cv::Size(src.cols * 0.1, src.rows * 0.1), CV_RETR_EXTERNAL, true);
+        if (contours2.empty()) continue;
 
+        mask.setTo(0);
+        cv::drawContours(mask, contours2, -1, cv::Scalar(255), CV_FILLED);
+    
         final_mask += mask;
         contours_cnt += contours2.size();
     }
 
     if (contours_cnt > 1) {
         cv::morphologyEx(final_mask, final_mask, cv::MORPH_CLOSE,
-                     cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(40, 40)));
-
+                     cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(50, 50)));
+    
         contours = find_contours(final_mask, CV_RETR_EXTERNAL, true);
         final_mask.setTo(0);
         cv::drawContours(final_mask, contours, -1, cv::Scalar(255), CV_FILLED);

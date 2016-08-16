@@ -51,7 +51,7 @@ void TargetTrack::apply() {
             hi_contours[i][j].x += horiz_roi_.x;
         }
     }
-    
+
     for( int i = 0; i < shadow_contours.size(); i++ ) {
         for (int j = 0; j < shadow_contours[i].size(); j++){
             shadow_contours[i][j].x += horiz_roi_.x;
@@ -63,7 +63,7 @@ void TargetTrack::apply() {
 
     hi_mask.convertTo(hi_mask, CV_32F, 1.0/255.0);
     shadow_mask.convertTo(shadow_mask, CV_32F, 1.0/255.0);
-    
+
     cv::Mat hi_mask_polar = sonar_util::Converter::convert2polar(image_utils::mat2vector<float>(hi_mask), bearings_, bin_count_, beam_count_, frame_width, frame_height, beam_mapping);
     cv::Mat shadow_mask_polar = sonar_util::Converter::convert2polar(image_utils::mat2vector<float>(shadow_mask), bearings_, bin_count_, beam_count_, frame_width, frame_height, beam_mapping);
     cv::Mat src_polar = sonar_util::Converter::convert2polar(bins_, bearings_, bin_count_, beam_count_, frame_width, frame_height, beam_mapping);
