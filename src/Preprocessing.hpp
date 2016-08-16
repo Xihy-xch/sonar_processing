@@ -47,7 +47,7 @@ static T min_max_thresh(std::vector<T> v, double alpha) {
 
 cv::Rect calc_horiz_roi_old(cv::Mat src);
 
-cv::Rect calc_horiz_roi(cv::Mat src);
+cv::Rect calc_horiz_roi(cv::Mat src, float alpha = 0.2);
 
 double horiz_difference(cv::Mat src);
 
@@ -72,9 +72,9 @@ void contrast_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, int div_si
 
 void remove_low_intensities_columns(cv::InputArray src_arr, cv::OutputArray dst_arr);
 
-std::vector<std::vector<cv::Point> > find_contours(cv::Mat src, int mode = CV_RETR_EXTERNAL);
+std::vector<std::vector<cv::Point> > find_contours(cv::Mat src, int mode = CV_RETR_EXTERNAL, bool convex_hull = false);
 
-std::vector<std::vector<cv::Point> > find_contours_and_filter(cv::Mat src, cv::Size min_size, int mode = CV_RETR_EXTERNAL);
+std::vector<std::vector<cv::Point> > find_contours_and_filter(cv::Mat src, cv::Size min_size, int mode = CV_RETR_EXTERNAL, bool convex_hull = false);
 
 std::vector<std::vector<cv::Point> > adaptative_find_contours_and_filter(cv::Mat src, double area_factor, double width_factor, double height_factor);
 
@@ -98,9 +98,19 @@ void spatial_variation_coefficient_filter(cv::InputArray src_arr, cv::OutputArra
 
 void difference_of_gaussian(cv::InputArray src_arr, cv::OutputArray dst_arr);
 
-std::vector<std::vector<cv::Point> > target_detect_by_high_intensities(cv::InputArray src_arr);
+std::vector<std::vector<cv::Point> > find_shadow_contours(cv::InputArray src_arr);
 
 std::vector<std::vector<cv::Point> > find_target_contours(cv::InputArray src_arr);
+
+std::vector<std::vector<cv::Point> > target_detect_by_high_intensities(cv::InputArray src_arr);
+
+void simple_thresholding(cv::InputArray src_arr, cv::OutputArray dst_arr, double alpha = 0.3, uint32_t colsdiv = 2);
+
+void houghlines_mask(cv::InputArray src_arr, cv::OutputArray dst_arr, 
+                    double rho = 1.0, double theta = CV_PI/180.0, int threshold = 10, 
+                    double min_line_length = 20, double max_line_gap = 40);
+
+std::vector<std::vector<cv::Point> > remove_low_intensities_contours(cv::InputArray src_arr, std::vector<std::vector<cv::Point> > contours);
 
 } /* namespace preprocessing */
 
