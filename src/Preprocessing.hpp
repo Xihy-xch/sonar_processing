@@ -6,20 +6,20 @@
 namespace sonar_target_tracking {
 
 namespace preprocessing {
-    
+
 static void slide_window_base(cv::InputArray src_arr) {
     cv::Mat src = src_arr.getMat();
 
     uint32_t bsize = 32;
     uint32_t bstep = bsize;
-    
+
     cv::Mat src_canvas = cv::Mat::zeros(src.size(), CV_8UC3);
-    
+
     for (int y = 0; y < src.cols-bsize; y+=bstep) {
         for (int x = 0; x < src.cols-bsize; x+=bstep) {
             cv::cvtColor(src, src_canvas, CV_GRAY2BGR);
             cv::Rect roi = cv::Rect(x, y, bsize, bsize);
-            
+
             cv::rectangle(src_canvas, roi, cv::Scalar(0, 0, 255));
 
             cv::imshow("src_canvas", src_canvas);
@@ -104,15 +104,17 @@ std::vector<std::vector<cv::Point> > find_target_contours(cv::InputArray src_arr
 
 std::vector<std::vector<cv::Point> > target_detect_by_high_intensities(cv::InputArray src_arr);
 
-void simple_thresholding(cv::InputArray src_arr, cv::OutputArray dst_arr, double alpha = 0.3, uint32_t colsdiv = 2);
+void simple_thresholding(cv::InputArray src_arr, cv::OutputArray dst_arr, double alpha = 0.3, uint32_t colsdiv = 2, cv::InputArray mask=cv::noArray());
 
-void houghlines_mask(cv::InputArray src_arr, cv::OutputArray dst_arr, 
-                    double rho = 1.0, double theta = CV_PI/180.0, int threshold = 10, 
+void houghlines_mask(cv::InputArray src_arr, cv::OutputArray dst_arr,
+                    double rho = 1.0, double theta = CV_PI/180.0, int threshold = 10,
                     double min_line_length = 20, double max_line_gap = 40);
 
 void remove_blobs(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size min_size, int mode = CV_RETR_EXTERNAL, bool convex_hull = false);
 
 std::vector<std::vector<cv::Point> > remove_low_intensities_contours(cv::InputArray src_arr, std::vector<std::vector<cv::Point> > contours);
+
+std::vector<std::vector<cv::Point> > convexhull(std::vector<std::vector<cv::Point> > contours);
 
 } /* namespace preprocessing */
 
