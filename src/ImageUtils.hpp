@@ -90,6 +90,8 @@ float entropy(const cv::Mat& src, int hist_size = 256);
 
 void adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size size = cv::Size(8, 8), float entropy_thresh = 7.5);
 
+void copymask(cv::InputArray src_arr, cv::InputArray mask_arr, cv::OutputArray dst_arr);
+
 
 } /* namespace image_utils */
 

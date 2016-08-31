@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <iterator>
+#include <cstring>
 
 namespace sonar_target_tracking {
 
@@ -242,6 +243,31 @@ void image_utils::adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_a
         }
 
         last_entropy = current_entropy;
+    }
+}
+
+void image_utils::copymask(cv::InputArray src_arr, cv::InputArray mask_arr, cv::OutputArray dst_arr) {
+    cv::Mat src  = src_arr.getMat();
+    cv::Mat mask = mask_arr.getMat();
+    uint32_t mask_size = cv::sum(mask)[0] / 255;
+    dst_arr.create(cv::Size(1, mask_size), src.type());
+    cv::Mat dst = dst_arr.getMat();
+
+    cv::Size sz = src.size();
+    size_t esz = dst.elemSize() * dst.channels();
+
+    size_t k = 0;
+    dst.setTo(0);
+
+    for(size_t i = 0; i < sz.height; i++) {
+        const uchar *mask_ptr = mask.data + mask.step * i;
+        const uchar *src_ptr = src.data + src.step * i;
+
+        for(size_t j = 0; j < sz.width; j++) {
+            if (mask_ptr[j]) {
+                memcpy(dst.data + (k++) * esz, src_ptr + j * esz, esz);
+            }
+        }
     }
 }
 
