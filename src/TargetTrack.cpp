@@ -25,7 +25,7 @@ TargetTrack::TargetTrack(
 
 void TargetTrack::apply() {
     cv::Mat src = cv::Mat(bins_).reshape(1, beam_count_);
-    polarshow("source data", bins_, bearings_, bin_count_, beam_count_);
+    // polarshow("source data", bins_, bearings_, bin_count_, beam_count_);
 
     horiz_roi_ = preprocessing::calc_horiz_roi(src, 0.075);
     cv::Mat mat = src(horiz_roi_);
@@ -59,7 +59,7 @@ void TargetTrack::apply() {
 
     cv::drawContours(hi_mask, hi_contours, -1, cv::Scalar(255), CV_FILLED);
     cv::drawContours(shadow_mask, shadow_contours, -1, cv::Scalar(255), CV_FILLED);
-    
+
     std::vector<std::vector<cv::Point> > hi_contours_hull = preprocessing::convexhull(hi_contours);
     cv::Mat dist = cv::Mat::zeros(src.size(), CV_8UC1);
     cv::drawContours(dist, hi_contours_hull, -1, cv::Scalar(255), CV_FILLED);
@@ -88,7 +88,7 @@ void TargetTrack::apply() {
     cv::drawContours(canvas_polar, hi_contours_polar, -1, cv::Scalar(0, 0, 255), 2);
     cv::drawContours(canvas_polar, shadow_contours_polar, -1, cv::Scalar(255, 0, 0), 2);
     cv::drawContours(canvas_polar, dist_contours_polar, -1, cv::Scalar(255, 255, 0), 2);
-    
+
     cv::Point2f center;
     float radius;
     for (int i = 0; i < dist_contours_polar.size(); i++) {

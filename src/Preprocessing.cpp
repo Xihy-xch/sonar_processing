@@ -23,7 +23,6 @@ cv::Rect preprocessing::calc_horiz_roi_old(cv::Mat src) {
     cv::repeat(bin, src.cols, 1, bin_area);
 
     std::vector<std::vector<cv::Point> > contours;
-    std::vector<cv::Vec4i> hierarchy;
 
     cv::findContours(bin_area, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
 
@@ -749,7 +748,6 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
     cv::boxFilter(src, src_sm, CV_8U, cv::Size(15, 15));
     gradient_filter(src_sm, grad);
     cv::normalize(grad, grad, 0, 255, cv::NORM_MINMAX);
-
     cv::boxFilter(src_sm, src_sm, CV_8U, cv::Size(50, 50));
     grad-=src_sm;
     cv::normalize(grad, grad, 0, 255, cv::NORM_MINMAX);
@@ -763,7 +761,9 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
     cv::morphologyEx(grad_bin, grad_bin, cv::MORPH_OPEN,
                  cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(5, 5)),
                  cv::Point(-1, -1), 1);
-                 
+
+
+
     cv::Mat grad_mask = cv::Mat::zeros(src.size(), CV_8UC1);
 
     for (int i = 0; i < 2; i++) {
@@ -794,13 +794,12 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
 
     cv::Mat mask = cv::Mat::zeros(src.size(), CV_8UC1);
     cv::Mat final_mask = cv::Mat::zeros(src.size(), src.type());
-    
+
     cv::GaussianBlur(src, src_sm, cv::Size(15, 15), 0);
     gradient_filter(src_sm, grad);
 
     for (int i = 0; i < contours.size(); i++) {
-    
-        cv::Rect rc = cv::boundingRect(contours[i]);
+
         mask.setTo(0);
         cv::drawContours(mask, contours, i, cv::Scalar(255), CV_FILLED);
         grad_bin.setTo(0);
@@ -812,30 +811,30 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
         double delta = (max - min) * 0.1;
         double thresh = image_utils::otsu_thresh_8u(grad_bin);
 
-        cv::threshold(grad_bin, bin, thresh + delta, 255, cv::NORM_MINMAX);
+        cv::threshold(grad_bin, bin, thresh + delta, 255, cv::THRESH_BINARY);
         remove_blobs(bin, grad_bin, cv::Size(5, 5), CV_RETR_LIST);
 
         std::vector<std::vector<cv::Point> > blobs_contours = find_contours(grad_bin, CV_RETR_LIST);
-        
+
         std::vector<double> height_vals;
         std::vector<double> width_vals;
-        
+
         for (int j = 0; j < blobs_contours.size(); j++) {
             cv::Rect blob_rc = cv::boundingRect(blobs_contours[j]);
             height_vals.push_back(blob_rc.height);
             width_vals.push_back(blob_rc.width);
         }
-        
+
         double height_thresh = min_max_thresh<double>(height_vals, 0.1);
         double width_thresh  = min_max_thresh<double>(width_vals, 0.1);
-        
+
         grad_bin.setTo(0);
         for (int j = 0; j < blobs_contours.size(); j++) {
             if (height_vals[j] > height_thresh && width_vals[j] > width_thresh) {
                 cv::drawContours(grad_bin, blobs_contours, j, cv::Scalar(255), CV_FILLED);
             }
         }
-        
+
         cv::morphologyEx(grad_bin, grad_bin, cv::MORPH_DILATE,
             cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(5, 5)),
             cv::Point(-1, -1), 1);
@@ -848,12 +847,6 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
 
         mask.setTo(0);
         cv::drawContours(mask, contours2, -1, cv::Scalar(255), CV_FILLED);
-        
-        cv::Mat mat;
-        src.copyTo(mat, mask);
-        
-        cv::imshow("mat", mat);
-        cv::waitKey();
 
         final_mask += mask;
     }
@@ -906,7 +899,6 @@ void preprocessing::weak_shadow_thresholding(cv::InputArray src_arr, cv::OutputA
     uint32_t bsize = 16;
     uint32_t bstep = bsize / 2;
 
-
     cv::Mat bin = cv::Mat::zeros(src.size(), CV_8UC1);
 
     std::vector<cv::Point> ground_distance_line = compute_ground_distance_line(src, 1.25);
@@ -944,7 +936,7 @@ void preprocessing::weak_shadow_thresholding(cv::InputArray src_arr, cv::OutputA
 
 std::vector<std::vector<cv::Point> > preprocessing::find_shadow_contours(cv::InputArray src_arr) {
     cv::Mat src = src_arr.getMat();
-    
+
     cv::Mat shadow_mask;
     weak_shadow_thresholding(src, shadow_mask);
     return find_contours(shadow_mask);
