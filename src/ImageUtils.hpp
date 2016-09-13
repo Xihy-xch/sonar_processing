@@ -92,6 +92,8 @@ void adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size 
 
 void copymask(cv::InputArray src_arr, cv::InputArray mask_arr, cv::OutputArray dst_arr);
 
+void show_scale(const std::string& title, const cv::Mat& source, double scale = 1.0);
+
 
 } /* namespace image_utils */
 

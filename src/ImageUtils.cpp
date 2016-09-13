@@ -271,4 +271,10 @@ void image_utils::copymask(cv::InputArray src_arr, cv::InputArray mask_arr, cv::
     }
 }
 
+void image_utils::show_scale(const std::string& title, const cv::Mat& source, double scale) {
+    cv::Mat scale_image;
+    cv::resize(source, scale_image, cv::Size(source.cols * scale, source.rows * scale));
+    cv::imshow(title, scale_image);
+}
+
 } /* sonar_target_tracking image_utils */
