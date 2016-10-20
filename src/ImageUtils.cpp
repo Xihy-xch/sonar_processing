@@ -277,4 +277,18 @@ void image_utils::show_scale(const std::string& title, const cv::Mat& source, do
     cv::imshow(title, scale_image);
 }
 
+cv::Rect_<float> image_utils::bounding_rect(std::vector<cv::Point2f> points) {
+    cv::Point2f top_left = cv::Point2f(FLT_MAX, FLT_MAX);
+    cv::Point2f bottom_right = cv::Point2f(FLT_MIN, FLT_MIN);
+
+    for (size_t i = 0; i < points.size(); i++){
+        top_left.x = std::min(top_left.x, points[i].x);
+        top_left.y = std::min(top_left.y, points[i].y);
+        bottom_right.x = std::max(bottom_right.x, points[i].x);
+        bottom_right.y = std::max(bottom_right.y, points[i].y);
+    }
+
+    return cv::Rect_<float>(top_left, bottom_right);
+}
+
 } /* sonar_target_tracking image_utils */

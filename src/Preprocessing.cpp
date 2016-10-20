@@ -1,7 +1,7 @@
 #include "base/Plot.hpp"
 #include "sonar_target_tracking/Preprocessing.hpp"
 #include "sonar_target_tracking/ImageUtils.hpp"
-#include "sonar_target_tracking/Utilities.hpp"
+#include "sonar_target_tracking/Utils.hpp"
 #include "sonar_target_tracking/third_party/spline.h"
 
 namespace sonar_target_tracking {
@@ -351,7 +351,7 @@ std::vector<cv::Point> preprocessing::compute_ground_distance_line(cv::Mat src, 
     uint32_t y = 0;
     std::vector<cv::Point> pts;
     while (y < src.rows) {
-        uint32_t xx = (uint32_t)utilities::clip(spline((double)y++), 0, src.rows-1);
+        uint32_t xx = (uint32_t)utils::clip(spline((double)y++), 0, src.rows-1);
         pts.push_back(cv::Point(xx, y));
     }
 

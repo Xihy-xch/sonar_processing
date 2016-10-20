@@ -94,6 +94,7 @@ void copymask(cv::InputArray src_arr, cv::InputArray mask_arr, cv::OutputArray d
 
 void show_scale(const std::string& title, const cv::Mat& source, double scale = 1.0);
 
+cv::Rect_<float> bounding_rect(std::vector<cv::Point2f> points);
 
 } /* namespace image_utils */
 

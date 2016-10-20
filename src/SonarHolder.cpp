@@ -6,7 +6,7 @@
 
 namespace sonar_target_tracking {
 
-SonarHolder::SonarHolder() 
+SonarHolder::SonarHolder()
     : beam_width_(0.0)
     , bin_count_(0)
     , beam_count_(0)
@@ -33,7 +33,7 @@ SonarHolder::SonarHolder(
 }
 
 SonarHolder::SonarHolder(
-    std::vector<float> bins, 
+    std::vector<float> bins,
     std::vector<float> bearings,
     float beam_width,
     uint32_t bin_count,
@@ -51,21 +51,22 @@ SonarHolder::~SonarHolder() {
 }
 
 void SonarHolder::Reset(
-    std::vector<float> bins, 
+    std::vector<float> bins,
     std::vector<float> bearings,
     float beam_width,
     uint32_t bin_count,
-    uint32_t beam_count) 
-{   
-    bool is_initialize = (bin_count != bin_count_ || beam_count != beam_count_);
+    uint32_t beam_count)
+{
+    bool is_initialize = (bin_count == bin_count_ && beam_count == beam_count_);
 
     bins_ = bins;
-    bearings_ = bearings;    
+    bearings_ = bearings;
     bin_count_ = bin_count;
     beam_count_ = beam_count;
     beam_width_ = beam_width;
-    
-    if (is_initialize) Initialize();
+
+    if (!is_initialize) Initialize();
+
     InitializeCartesianImage();
 }
 
@@ -130,7 +131,7 @@ void SonarHolder::InitializeCartesianImage() {
 }
 
 void SonarHolder::LinearPolarToCartesianImage(cv::OutputArray _dst) {
-    _dst.create(cart_size_, CV_32FC1);    
+    _dst.create(cart_size_, CV_32FC1);
     cv::Mat dst = _dst.getMat();
     dst.setTo(0);
     float *dst_ptr = reinterpret_cast<float*>(dst.data);
@@ -190,7 +191,7 @@ void SonarHolder::SetCartesianToPolarSector(uint32_t polar_idx) {
     points(0) = cart_points_[(beam + 0) * bin_count_ + (bin + 0)];
     points(1) = cart_points_[(beam + 1) * bin_count_ + (bin + 1)];
     points(2) = cart_points_[(beam + 0) * bin_count_ + (bin + 1)];
-    points(3) = cart_points_[(beam + 1) * bin_count_ + (bin + 1)];
+    points(3) = cart_points_[(beam + 1) * bin_count_ + (bin + 0)];
 
     cv::Rect rc = cv::boundingRect(points);
 
@@ -198,7 +199,7 @@ void SonarHolder::SetCartesianToPolarSector(uint32_t polar_idx) {
     float r1 = bin+1;
     float t0 = bearings_[beam];
     float t1 = bearings_[beam+1];
-    
+
     cart_center_points_[polar_idx] = base::MathUtil::to_cartesianf(t0 + (t1 - t0) / 2, r0 + (r1 - r0) / 2, -M_PI_2) + cart_origin_;
 
     for (uint32_t y = rc.tl().y; y <= rc.br().y && y < cart_size_.height; y++) {
@@ -271,7 +272,55 @@ void SonarHolder::GetNeighborhoodAngles(int origin_index, int index, std::vector
             angles[i] = atan2(dy, dx);
             neighbors_indices[i] = idx;
         }
-    }    
+    }
+}
+
+void SonarHolder::GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size) const {
+    size_t total_neighbors = neighbor_size * neighbor_size;
+
+    uint32_t beam = polar_index / bin_count_;
+    uint32_t bin = polar_index % bin_count_;
+
+    cv::Point2f point = cv::Point(-1, -1);
+    neighbors_indices.assign(total_neighbors, -1);
+
+    int j = 0;
+    int neighbor_size_2 = neighbor_size / 2;
+
+    for (int i = 0; i < total_neighbors; i++) {
+        int x = (i % neighbor_size) - neighbor_size_2;
+        int y = (i / neighbor_size) - neighbor_size_2;
+        int bi = (beam+y < 0 || beam+y >= beam_count_) ? -1 : beam+y;
+        int bj = (bin+x < 0 || bin+x >= bin_count_) ? -1 : bin+x;
+        int idx = bi * bin_count_ + bj;
+
+        if (bi != -1 && bj != -1 && idx != polar_index) {
+            neighbors_indices[i] = idx;
+        }
+    }
+}
+
+std::vector<cv::Point2f> SonarHolder::GetSectorPoints(int polar_index) const {
+    int beam = index_to_beam(polar_index);
+    int bin = index_to_bin(polar_index);
+
+    std::vector<cv::Point2f> points(4);
+
+    points[0] = cart_points_[(beam + 0) * bin_count_ + (bin + 0)];
+    points[1] = cart_points_[(beam + 1) * bin_count_ + (bin + 1)];
+    points[2] = cart_points_[(beam + 0) * bin_count_ + (bin + 1)];
+    points[3] = cart_points_[(beam + 1) * bin_count_ + (bin + 0)];
+
+    return points;
+}
+
+void SonarHolder::GetPolarLimits(int polar_index, float& start_bin, float& final_bin, float& start_beam, float& final_beam) const {
+    int bin = index_to_bin(polar_index);
+    int beam = index_to_beam(polar_index);
+    start_bin = float(bin+0);
+    final_bin = float(bin+1);
+    start_beam = bearings_[beam+0];
+    final_beam = bearings_[beam+1];
 }
 
 } /* namespace sonar_target_tracking */
