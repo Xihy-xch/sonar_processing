@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <base/Angle.hpp>
-#include "sonar_target_tracking/BasicOperations.hpp"
+#include "sonar_processing/BasicOperations.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
-} // namespace sonar_target_tracking
+} // namespace sonar_processing

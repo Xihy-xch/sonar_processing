@@ -1,10 +1,10 @@
-#ifndef sonar_target_tracking_PolarCartesianScanner_hpp
-#define sonar_target_tracking_PolarCartesianScanner_hpp
+#ifndef sonar_processing_PolarCartesianScanner_hpp
+#define sonar_processing_PolarCartesianScanner_hpp
 
 #include <stdio.h>
-#include "sonar_target_tracking/SonarHolder.hpp"
+#include "sonar_processing/SonarHolder.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 class PolarCartesianScanner {
 
@@ -133,14 +133,11 @@ private:
     void EvaluateSectorLimitPoints(
         int from_index,
         cv::Point2f from_point,
-        float resolution,
         ScanningDirection direction,
         cv::Point2f& start_point,
         cv::Point2f& final_point);
 
     float GetMinimumRadius(const std::vector<int>& indices);
-
-    float ComputeScanningResolution(const std::vector<int>& indices, float decimal_shift = 2.0);
 
     void SetScanningPosition (
         cv::Rect_<float> rc,
@@ -166,7 +163,7 @@ private:
 
 
 
-} // sonar_target_tracking
+} // sonar_processing
 
 
 #endif /* PolarCartesianScanner_hpp */

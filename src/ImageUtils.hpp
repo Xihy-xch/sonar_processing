@@ -4,7 +4,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace image_utils {
 
@@ -98,6 +98,6 @@ cv::Rect_<float> bounding_rect(std::vector<cv::Point2f> points);
 
 } /* namespace image_utils */
 
-} /* sonar_target_tracking image_utils */
+} /* sonar_processing image_utils */
 
 #endif /* ImageUtils_hpp */

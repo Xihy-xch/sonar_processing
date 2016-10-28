@@ -1,12 +1,12 @@
-#ifndef sonar_target_tracking_SonarHolder_hpp
-#define sonar_target_tracking_SonarHolder_hpp
+#ifndef sonar_processing_SonarHolder_hpp
+#define sonar_processing_SonarHolder_hpp
 
 #include <iostream>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include "sonar_target_tracking/ImageUtils.hpp"
+#include "sonar_processing/ImageUtils.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 class SonarHolder {
 
@@ -46,9 +46,21 @@ public:
                float beam_width,
                uint32_t bin_count,
                uint32_t beam_count);
+               
+    void ResetBins(std::vector<float> bins);
+
 
     std::vector<float> bins() const {
         return bins_;
+    }
+    
+    void set_bins(std::vector<float> bins) {
+        bins_ = bins;
+        std::copy(bins.begin(), bins.end(), bins_.begin());
+    }
+
+    std::vector<uchar> bins_mask() const {
+        return bins_mask_;
     }
 
     float value_at(int index) const {
@@ -62,7 +74,7 @@ public:
     void values(const std::vector<int>& indices, std::vector<float>& values) const {
         values.assign(indices.size(), 0.0);
         for (size_t i = 0; i < indices.size(); i++) {
-            values[i] = bins_[indices[i]];
+            if (indices[i] > 0) values[i] = bins_[indices[i]];
         }
     }
 
@@ -80,6 +92,10 @@ public:
 
     uint32_t beam_count() const  {
         return beam_count_;
+    }
+    
+    uint32_t total_elements() const {
+        return total_elements_;
     }
 
     float beam_width() const {
@@ -117,6 +133,10 @@ public:
 
     cv::Mat cart_image() const {
         return cart_image_;
+    }
+    
+    cv::Mat raw_image() const {
+        return raw_image_;
     }
 
     cv::Point2f cart_point(uint32_t bin, uint32_t beam) const {
@@ -159,9 +179,8 @@ public:
     }
 
     int GetMinAngleDistance(std::vector<float> angles, std::vector<int> indices, float alpha, int& angle_index) const;
-
+    
     void GetNeighborhoodAngles(int origin_index, int index, std::vector<int>& neighbors_indices, std::vector<float>& angles, int neighbor_size = 3) const;
-
     void GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size = 3) const;
 
     cv::Point2f sector_top_left_point(int polar_index) const {
@@ -188,6 +207,18 @@ public:
         return image_utils::bounding_rect(GetSectorPoints(polar_index));
     }
 
+    void CopyTo(SonarHolder& out) const;
+    
+    void CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
+
+    void CopyHeaderData(SonarHolder& out) const;
+
+    void CopyBinsValues(SonarHolder& out) const;
+
+    void CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
+    
+    void SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices);
+
 private:
 
     void Initialize();
@@ -196,16 +227,18 @@ private:
     void InitializeCartesianImage();
     void SetCartesianToPolarSector(uint32_t polar_idx);
     void LinearPolarToCartesianImage(cv::OutputArray dst);
-    void WeightedPolarToCartesianImage(cv::OutputArray dst);
+    void WeightedPolarToCartesianImage(cv::OutputArray dst);    
 
     std::vector<float> BuildBeamBearings(float start_beam, float beam_width, uint32_t beam_count);
 
     std::vector<float> bins_;
     std::vector<float> bearings_;
+    
+    std::vector<uchar> bins_mask_;
 
     uint32_t bin_count_;
     uint32_t beam_count_;
-    uint32_t total_bins_;
+    uint32_t total_elements_;
     float beam_width_;
 
     std::vector<cv::Point2f> cart_points_;
@@ -221,9 +254,10 @@ private:
     int interpolation_type_;
 
     cv::Mat cart_image_;
+    cv::Mat raw_image_;
 };
 
-} /* namespace sonar_target_tracking */
+} /* namespace sonar_processing */
 
 
-#endif /* SonarHolder_hpp */
+#endif /* sonar_util_SonarHolder_hpp */

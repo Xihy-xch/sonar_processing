@@ -1,10 +1,10 @@
 #include "base/Plot.hpp"
-#include "sonar_target_tracking/Preprocessing.hpp"
-#include "sonar_target_tracking/ImageUtils.hpp"
-#include "sonar_target_tracking/Utils.hpp"
-#include "sonar_target_tracking/third_party/spline.h"
+#include "sonar_processing/Preprocessing.hpp"
+#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/Utils.hpp"
+#include "sonar_processing/third_party/spline.h"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 cv::Rect preprocessing::calc_horiz_roi_old(cv::Mat src) {
     cv::Mat col_sum;
@@ -949,4 +949,4 @@ std::vector<std::vector<cv::Point> > preprocessing::find_target_contours(cv::Inp
     return find_contours(hi_mask);
 }
 
-} /* namespace sonar_target_tracking */
+} /* namespace sonar_processing */

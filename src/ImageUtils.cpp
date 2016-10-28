@@ -1,10 +1,10 @@
-#include "sonar_target_tracking/ImageUtils.hpp"
+#include "sonar_processing/ImageUtils.hpp"
 #include <iostream>
 #include <fstream>
 #include <iterator>
 #include <cstring>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 cv::Mat image_utils::vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count) {
     cv::Mat dst(beam_count, bin_count, CV_32F, (void*) src.data());
@@ -291,4 +291,4 @@ cv::Rect_<float> image_utils::bounding_rect(std::vector<cv::Point2f> points) {
     return cv::Rect_<float>(top_left, bottom_right);
 }
 
-} /* sonar_target_tracking image_utils */
+} /* sonar_processing image_utils */

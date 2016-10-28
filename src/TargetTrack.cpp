@@ -2,14 +2,14 @@
 #include "base/MathUtil.hpp"
 #include "sonar_util/Plot.hpp"
 #include "rock_util/SonarSampleConverter.hpp"
-#include "sonar_target_tracking/TargetTrack.hpp"
-#include "sonar_target_tracking/ImageUtils.hpp"
-#include "sonar_target_tracking/Preprocessing.hpp"
-#include "sonar_target_tracking/third_party/spline.h"
+#include "sonar_processing/TargetTrack.hpp"
+#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/Preprocessing.hpp"
+#include "sonar_processing/third_party/spline.h"
 
 using namespace sonar_util::plot;
 
-namespace sonar_target_tracking
+namespace sonar_processing
 {
 
 TargetTrack::TargetTrack(

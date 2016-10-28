@@ -1,6 +1,6 @@
 #include "PolarCartesianScanner.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 PolarCartesianScanner::PolarCartesianScanner(const SonarHolder& sonar_holder)
     : sonar_holder_(sonar_holder)
@@ -41,7 +41,7 @@ void PolarCartesianScanner::GetCartesianNeighborhood(int from_index, int nsize, 
     std::vector<int> line_indices;
     std::vector<cv::Point2f> line_points;
     std::vector<int> transpose_indices(nsize * nsize, -1);
-
+    
     GetIntersectionLine(from_index, nsize, line_indices, line_points);
 
     for (size_t col = 0; col < line_indices.size(); col++) {
@@ -49,7 +49,7 @@ void PolarCartesianScanner::GetCartesianNeighborhood(int from_index, int nsize, 
         GetCartesianColumn(line_indices[col], line_points[col], column_indices, nsize);
         std::copy(column_indices.begin(), column_indices.end(), transpose_indices.begin() + col * nsize);
     }
-
+    
     for (size_t col = 0; col < nsize; col++) {
         for (size_t line = 0; line < nsize; line++) {
             indices[line * nsize + col] = transpose_indices[col * nsize + line];
@@ -165,12 +165,11 @@ bool PolarCartesianScanner::IsScanningComplete(int index, int count, int total_e
 }
 
 void PolarCartesianScanner::EvaluateIntersectionPoints(int from_index, cv::Point2f from_point, const std::vector<int>& indices, ScanningDirection direction, std::vector<cv::Point2f>& points) {
-    float resolution = ComputeScanningResolution(indices);
     points.assign(indices.size(), cv::Point2f(-1, -1));
 
     for (size_t i = 0; i < indices.size(); i++) {
         cv::Point2f start_point, final_point;
-        EvaluateSectorLimitPoints(indices[i], from_point, resolution, direction, start_point, final_point);
+        EvaluateSectorLimitPoints(indices[i], from_point, direction, start_point, final_point);
         SetMiddlePoint(direction, start_point, final_point, points[i]);
     }
 }
@@ -178,7 +177,6 @@ void PolarCartesianScanner::EvaluateIntersectionPoints(int from_index, cv::Point
 void PolarCartesianScanner::EvaluateSectorLimitPoints (
     int from_index,
     cv::Point2f from_point,
-    float resolution,
     ScanningDirection direction,
     cv::Point2f& start_point,
     cv::Point2f& final_point) {
@@ -188,13 +186,22 @@ void PolarCartesianScanner::EvaluateSectorLimitPoints (
 
     float start_radius, final_radius;
     float start_theta, final_theta;
-
+    
     sonar_holder_.GetPolarLimits(from_index, start_radius, final_radius, start_theta, final_theta);
 
     start_point = cv::Point2f(-1, -1);
     final_point = cv::Point2f(-1, -1);
 
     float start_position, final_position, scanning_position;
+    
+    float resolution = 0;
+    if (direction == kScanningHorizontal) {
+        resolution = rc.width / 10.0;
+    }
+    else if (direction == kScanningVertical) {
+        resolution = rc.height / 10.0;
+    }
+
     SetScanningPosition(rc, from_point, resolution, direction, start_position, final_position, scanning_position);
 
     bool inside_sector = false;
@@ -204,7 +211,7 @@ void PolarCartesianScanner::EvaluateSectorLimitPoints (
         float dx = origin.x - pt.x;
         float dy = origin.y - pt.y;
         float r = sqrt(dx * dx + dy * dy);
-        float t = atan2(dy, dx) - M_PI_2;
+        float t = atan2f(dy, dx) - M_PI_2;
 
         if (r >= start_radius && r <= final_radius &&
             t >= start_theta && t <= final_theta) {
@@ -228,12 +235,6 @@ float PolarCartesianScanner::GetMinimumRadius(const std::vector<int>& indices) {
     }
 
     return minimum_bin;
-}
-
-float PolarCartesianScanner::ComputeScanningResolution(const std::vector<int>& indices, float decimal_shift) {
-    float out_radius_size = 2.0 * sonar_holder_.bin_count() * M_PI * sonar_holder_.beam_width();
-    float in_radius_size = 2.0 * GetMinimumRadius(indices) * M_PI * sonar_holder_.beam_width();
-    return in_radius_size / (out_radius_size * (powf(10.0, decimal_shift)));
 }
 
 void PolarCartesianScanner::SetScanningPosition(

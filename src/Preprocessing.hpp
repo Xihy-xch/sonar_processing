@@ -3,7 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace preprocessing {
 
@@ -118,6 +118,6 @@ std::vector<std::vector<cv::Point> > convexhull(std::vector<std::vector<cv::Poin
 
 } /* namespace preprocessing */
 
-} /* namespace sonar_target_tracking */
+} /* namespace sonar_processing */
 
 #endif /* end of include guard: PreProcessing */

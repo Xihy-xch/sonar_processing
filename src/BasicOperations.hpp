@@ -1,10 +1,10 @@
-#ifndef sonar_target_tracking_BasicOperations_hpp
-#define sonar_target_tracking_BasicOperations_hpp
+#ifndef sonar_processing_BasicOperations_hpp
+#define sonar_processing_BasicOperations_hpp
 
-#include "sonar_target_tracking/SonarHolder.hpp"
-#include "sonar_target_tracking/PolarCartesianScanner.hpp"
+#include "sonar_processing/SonarHolder.hpp"
+#include "sonar_processing/PolarCartesianScanner.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace basic_operations {
 
@@ -80,6 +80,6 @@ inline void average_lines(const SonarHolder& sonar_holder, int first_bin, int la
 
 } // namespace basic_operations
 
-} // namespace sonar_target_tracking
+} // namespace sonar_processing
 
-#endif /* end of include guard: sonar_target_tracking_BasicOperations_hpp */
+#endif /* end of include guard: sonar_processing_BasicOperations_hpp */

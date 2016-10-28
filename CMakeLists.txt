@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.8)
-project (sonar_target_tracking)
+project (sonar_processing)
 
 set (
     ${PROJECT_NAME}_SOURCE_DIR

@@ -1,6 +1,6 @@
 #include "QualityMetrics.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 double qs::MSE(cv::Mat& I1, cv::Mat& I2) {
     CV_Assert(I1.depth() == CV_8U && I2.depth() == CV_8U);
@@ -78,4 +78,4 @@ cv::Scalar qs::MSSIM( const cv::Mat& I1, const cv::Mat& I2) {
     return mssim;
 }
 
-} /* sonar_target_tracking image_util */
+} /* sonar_processing image_util */

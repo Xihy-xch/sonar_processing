@@ -1,10 +1,11 @@
-#ifndef sonar_target_tracking_Utilities_Hpp
-#define sonar_target_tracking_Utilities_Hpp
+#ifndef sonar_processing_Utilities_Hpp
+#define sonar_processing_Utilities_Hpp
 
 #include <stdint.h>
 #include <vector>
+#include <sys/time.h>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace utils {
 
@@ -23,8 +24,23 @@ void accumulative_sum(const std::vector<T>& src, std::vector<T>& dst) {
     for (size_t i = 1; i < src.size(); i++) dst[i] = dst[i-1] + src[i];
 }
 
+namespace now {
+
+inline static uint64_t microseconds() {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return t.tv_sec * 1000000 + t.tv_usec;
+}
+
+inline static uint64_t milliseconds() {
+    return microseconds() / 1000;    
+}
+
+}
+
+
 } /* end of namespace utilities */
 
-} /* end of namespace sonar_target_tracking */
+} /* end of namespace sonar_processing */
 
 #endif /* end of include guard:  */

@@ -1,6 +1,6 @@
-#include <sonar_target_tracking/FrequencyDomain.hpp>
+#include <sonar_processing/FrequencyDomain.hpp>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace frequency_domain {
 
@@ -296,4 +296,4 @@ void dft::show_inverse(const std::string title, cv::InputArray src_arr) {
 
 } /* namespace frequency_domain */
 
-} /* namespace sonar_target_tracking */
+} /* namespace sonar_processing */

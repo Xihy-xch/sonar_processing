@@ -5,7 +5,7 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 class TargetTrack {
 public:

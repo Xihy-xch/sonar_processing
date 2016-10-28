@@ -4,7 +4,7 @@
 #include "base/MathUtil.hpp"
 #include "SonarHolder.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 SonarHolder::SonarHolder()
     : beam_width_(0.0)
@@ -12,7 +12,7 @@ SonarHolder::SonarHolder()
     , beam_count_(0)
     , cart_size_(0, 0)
     , cart_origin_(0.0, 0.0)
-    , total_bins_(0)
+    , total_elements_(0)
     , interpolation_type_(WEIGHTED)
 {
 }
@@ -26,7 +26,7 @@ SonarHolder::SonarHolder(
     int interpolation_type)
     : cart_size_(0, 0)
     , cart_origin_(0.0, 0.0)
-    , total_bins_(0)
+    , total_elements_(0)
     , interpolation_type_(interpolation_type)
 {
     Reset(bins, start_beam, beam_width, bin_count, beam_count);
@@ -41,7 +41,7 @@ SonarHolder::SonarHolder(
     int interpolation_type)
     : cart_size_(0, 0)
     , cart_origin_(0.0, 0.0)
-    , total_bins_(0)
+    , total_elements_(0)
     , interpolation_type_(interpolation_type)
 {
     Reset(bins, bearings, beam_width, bin_count, beam_count);
@@ -65,6 +65,8 @@ void SonarHolder::Reset(
     beam_count_ = beam_count;
     beam_width_ = beam_width;
 
+    raw_image_ = cv::Mat(bins_).reshape(1, beam_count_);
+
     if (!is_initialize) Initialize();
 
     InitializeCartesianImage();
@@ -79,6 +81,10 @@ void SonarHolder::Reset(
 {
     Reset(bins, BuildBeamBearings(start_beam, beam_width, beam_count), beam_width, bin_count, beam_count);
 }
+void SonarHolder::ResetBins(std::vector<float> bins){
+    Reset(bins, bearings_, beam_width_, bin_count_, beam_count_);
+}
+
 
 std::vector<float> SonarHolder::BuildBeamBearings(float start_beam, float beam_width, uint32_t beam_count) {
     std::vector<float> bearings;
@@ -90,15 +96,17 @@ std::vector<float> SonarHolder::BuildBeamBearings(float start_beam, float beam_w
 }
 
 void SonarHolder::Initialize() {
-    total_bins_ = bin_count_ * beam_count_;
+    total_elements_ = bin_count_ * beam_count_;
     cart_size_ = cv::Size(cos(beam_width_ - M_PI_2) * bin_count_ * 2.0, bin_count_);
     cart_origin_ = cv::Point2f(cart_size_.width / 2, cart_size_.height - 1);
+    bins_mask_.assign(total_elements_, 1);
+
     InitializeCartesianPoints();
     InitializePolarMapping();
 }
 
 void SonarHolder::InitializeCartesianPoints() {
-    cart_points_.assign(total_bins_, cv::Point2f(-1, -1));
+    cart_points_.assign(total_elements_, cv::Point2f(-1, -1));
     for (uint32_t bin = 0; bin < bin_count_; bin++) {
         for (uint32_t beam = 0; beam < beam_count_; beam++) {
             float radius = (bin == 0) ? 0.0001 : (float)bin;
@@ -108,12 +116,12 @@ void SonarHolder::InitializeCartesianPoints() {
 }
 
 void SonarHolder::InitializePolarMapping() {
-    cart_center_points_.assign(total_bins_, cv::Point2f(-1, -1));
+    cart_center_points_.assign(total_elements_, cv::Point2f(-1, -1));
     cart_to_polar_.assign(cart_size_.width * cart_size_.height, -1);
     radius_.assign(cart_size_.width * cart_size_.height, 0);
     angles_.assign(cart_size_.width * cart_size_.height, 0);
 
-    for (uint32_t i = 0; i < total_bins_; i++) {
+    for (uint32_t i = 0; i < total_elements_; i++) {
         SetCartesianToPolarSector(i);
     }
 }
@@ -155,28 +163,31 @@ void SonarHolder::WeightedPolarToCartesianImage(cv::OutputArray _dst) {
 
             int polar_idx = cart_to_polar_[cart_idx];
 
-            int beam = polar_idx / bin_count_;
-            int bin = polar_idx % bin_count_;
+            if (bins_mask_[polar_idx]) {
 
-            if (beam < beam_count_-1 && bin < bin_count_-1) {
-                float s0 = bins_[(beam+0)*bin_count_+bin+0];
-                float s1 = bins_[(beam+0)*bin_count_+bin+1];
-                float s2 = bins_[(beam+1)*bin_count_+bin+0];
-                float s3 = bins_[(beam+1)*bin_count_+bin+1];
+                int beam = polar_idx / bin_count_;
+                int bin = polar_idx % bin_count_;
 
-                float r0 = bin+0;
-                float r1 = bin+1;
-                float t0 = bearings_[beam+0];
-                float t1 = bearings_[beam+1];
+                if (beam < beam_count_-1 && bin < bin_count_-1) {
+                    float s0 = bins_[(beam+0)*bin_count_+bin+0];
+                    float s1 = bins_[(beam+0)*bin_count_+bin+1];
+                    float s2 = bins_[(beam+1)*bin_count_+bin+0];
+                    float s3 = bins_[(beam+1)*bin_count_+bin+1];
 
-                float r = radius_[cart_idx];
-                float t = angles_[cart_idx];
+                    float r0 = bin+0;
+                    float r1 = bin+1;
+                    float t0 = bearings_[beam+0];
+                    float t1 = bearings_[beam+1];
 
-                float v0 = s0 + (s1 - s0) * (r - r0);
-                float v1 = s2 + (s3 - s2) * (r - r0);
-                float v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
+                    float r = radius_[cart_idx];
+                    float t = angles_[cart_idx];
 
-                *(dst_ptr + cart_idx) = v;
+                    float v0 = s0 + (s1 - s0) * (r - r0);
+                    float v1 = s2 + (s3 - s2) * (r - r0);
+                    float v = v0 + (v1 - v0) * (t - t0) / (t1 - t0);
+
+                    *(dst_ptr + cart_idx) = v;
+                }
             }
         }
     }
@@ -323,4 +334,71 @@ void SonarHolder::GetPolarLimits(int polar_index, float& start_bin, float& final
     final_beam = bearings_[beam+1];
 }
 
-} /* namespace sonar_target_tracking */
+void SonarHolder::CopyTo(SonarHolder& out) const {
+    CopyHeaderData(out);
+    CopyBinsValues(out);
+    raw_image_.copyTo(out.raw_image_);
+    cart_image_.copyTo(out.cart_image_);
+}
+
+void SonarHolder::CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const {
+    CopyHeaderData(out);
+    CopyBinsValues(out, start_line_indices, final_line_indices);
+    out.raw_image_ = cv::Mat(out.bins_).reshape(1, out.beam_count_);
+    out.InitializeCartesianImage();
+}
+
+void SonarHolder::CopyHeaderData(SonarHolder& out) const {
+    out.bearings_ = bearings_;
+    out.bin_count_ = bin_count_;
+    out.beam_count_ = beam_count_;
+    out.beam_width_ = beam_width_;
+    out.total_elements_ = total_elements_;
+
+    out.cart_size_ = cart_size_;
+    out.cart_origin_ = cart_origin_;
+    out.cart_points_ = cart_points_;
+    out.cart_center_points_ = cart_center_points_;
+    out.cart_to_polar_ = cart_to_polar_;
+
+    out.radius_ = radius_;
+    out.angles_ = angles_;
+}
+
+void SonarHolder::CopyBinsValues(SonarHolder& out) const {
+    out.bins_ = bins_;
+    out.bins_mask_ = bins_mask_;
+}
+
+void SonarHolder::CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const {
+    out.bins_ = bins_;
+    out.bins_mask_ = bins_mask_;
+    out.SetBinsOfInterest(start_line_indices, final_line_indices);
+}
+
+void SonarHolder::SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) {
+    std::vector<float> source_bins = bins_;
+
+    std::fill(bins_.begin(), bins_.end(), 0);
+    std::fill(bins_mask_.begin(), bins_mask_.end(), 0);
+
+    for (size_t i = 0; i < start_line_indices.size(); i++) {
+        int bin   = index_to_bin(start_line_indices[i]);
+        int beam  = index_to_beam(start_line_indices[i]);
+        int first = beam*bin_count_+bin;
+        int last  = beam*bin_count_+bin_count_-1;
+        std::copy(source_bins.begin()+first, source_bins.begin()+last, bins_.begin()+first);
+        std::fill(bins_mask_.begin()+first, bins_mask_.begin()+last, 1);
+    }
+
+    for (size_t i = 0; i < final_line_indices.size(); i++) {
+        int bin   = index_to_bin(final_line_indices[i]);
+        int beam  = index_to_beam(final_line_indices[i]);
+        int first = beam*bin_count_+bin;
+        int last  = beam*bin_count_+bin_count_-1;
+        std::fill(bins_.begin()+first, bins_.begin()+last, 0);
+        std::fill(bins_mask_.begin()+first, bins_mask_.begin()+last, 0);
+    }
+}
+
+} /* namespace sonar_processing */

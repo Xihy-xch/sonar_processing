@@ -1,9 +1,9 @@
-#ifndef sonar_target_tracking_FrequencyDomain_hpp
-#define sonar_target_tracking_FrequencyDomain_hpp
+#ifndef sonar_processing_FrequencyDomain_hpp
+#define sonar_processing_FrequencyDomain_hpp
 
 #include <opencv2/opencv.hpp>
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace  frequency_domain {
 
@@ -37,6 +37,6 @@ namespace dft {
 
 } /* namespace frequency_domain */
 
-} /* namespace sonar_target_tracking */
+} /* namespace sonar_processing */
 
-#endif /* end of include guard: sonar_target_tracking_FrequencyDomain_hpp */
+#endif /* end of include guard: sonar_processing_FrequencyDomain_hpp */

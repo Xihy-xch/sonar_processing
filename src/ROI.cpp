@@ -1,36 +1,36 @@
 #include "base/Plot.hpp"
-#include "sonar_target_tracking/Utils.hpp"
+#include "sonar_processing/Utils.hpp"
 #include "ROI.hpp"
 
-namespace sonar_target_tracking {
+namespace sonar_processing {
 
 namespace roi {
 
 SonarROIDetector::SonarROIDetector(
     const SonarHolder& sonar_holder,
-    int initial_bin)
+    int initial_bin, 
+    ScanningType scanning_type)
     : sonar_holder_(sonar_holder)
     , initial_bin_(initial_bin)
+    , scanning_type_(scanning_type)
 {
 }
 
 SonarROIDetector::~SonarROIDetector() {
-
 }
 
 void SonarROIDetector::GetBinsOfInterest(int& start_bin, int& final_bin, float start_bin_cutoff, float final_bin_cutoff) {
-    start_bin = GetStartBin(start_bin_cutoff);
-    final_bin = GetFinalBin(final_bin_cutoff);
+    start_bin = GetStartBinPolar(start_bin_cutoff);
+    final_bin = GetFinalBinPolar(final_bin_cutoff);
 }
 
-int SonarROIDetector::GetStartBin(float cutoff) {
+int SonarROIDetector::GetStartBinPolar(float cutoff) {
     std::vector<float> averages;
-
     basic_operations::average_lines(sonar_holder_, initial_bin_, sonar_holder_.bin_count() / 2, averages);
-    return GetCutOffBin(averages, initial_bin_, cutoff);
+    return GetCutOffBinPolar(averages, initial_bin_, cutoff);
 }
 
-int SonarROIDetector::GetFinalBin(float cutoff) {
+int SonarROIDetector::GetFinalBinPolar(float cutoff) {
 
     int first_bin = sonar_holder_.bin_count() - (sonar_holder_.bin_count() / 3);
     int last_bin = sonar_holder_.bin_count() - 2;
@@ -50,10 +50,10 @@ int SonarROIDetector::GetFinalBin(float cutoff) {
     cv::blur(low_probs_mat, low_probs_mat, cv::Size(25, 25));
     cv::normalize(low_probs_mat, low_probs_mat, 0, 1, cv::NORM_MINMAX);
 
-    return GetCutOffBin(low_probs, first_bin, cutoff);
+    return GetCutOffBinPolar(low_probs, first_bin, cutoff);
 }
 
-int SonarROIDetector::GetCutOffBin(std::vector<float> values, int offset, float cutoff) {
+int SonarROIDetector::GetCutOffBinPolar(std::vector<float> values, int offset, float cutoff) {
     std::vector<float> accsum;
     utils::accumulative_sum<float>(values, accsum);
 
@@ -81,4 +81,4 @@ void SonarROIDetector::EvalProbs(std::vector<float> values, float thresh, float&
 
 } /* namespace roi */
 
-} /* namespace sonar_target_tracking  */
+} /* namespace sonar_processing  */
