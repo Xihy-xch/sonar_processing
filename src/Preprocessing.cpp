@@ -76,6 +76,23 @@ cv::Rect preprocessing::calc_horiz_roi(cv::Mat src, float alpha) {
     return cv::Rect(cv::Point(new_x, 0), cv::Size(acc_sum.cols - new_x, src.rows));
 }
 
+void preprocessing::adaptative_clahe(cv::InputArray _src, cv::OutputArray _dst) {
+    cv::Mat src = _src.getMat();
+    _dst.create(src.size(), src.type());
+    cv::Mat dst = _dst.getMat();
+
+    float best_entropy = 0.0;
+    for (float c = 0.25; c <= 2; c++) {
+        cv::Mat enhanced;
+        image_utils::clahe_mat8u(src, enhanced, c, cv::Size(8, 8));
+        float entropy = image_utils::entropy(enhanced, 256);
+        if (entropy > best_entropy) {
+            best_entropy = entropy;
+            enhanced.copyTo(dst);
+        }
+    }
+}
+
 double preprocessing::horiz_difference(cv::Mat src) {
     CV_Assert(src.depth() == CV_32F || src.depth() == CV_8U);
 

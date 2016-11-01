@@ -49,6 +49,8 @@ cv::Rect calc_horiz_roi_old(cv::Mat src);
 
 cv::Rect calc_horiz_roi(cv::Mat src, float alpha = 0.2);
 
+void adaptative_clahe(cv::InputArray _src, cv::OutputArray _dst);
+
 double horiz_difference(cv::Mat src);
 
 double vert_difference(cv::Mat src);
