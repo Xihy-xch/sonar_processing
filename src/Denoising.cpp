@@ -27,6 +27,42 @@ void denoising::homomorphic_filter(cv::InputArray _src, cv::OutputArray _dst, in
     }
 
     dst.convertTo(dst, CV_8UC1, 255);
-} /* namespace roi */
+}
 
+
+/* Recursive Least Square Filter */
+void denoising::rls(cv::Mat& rls_p, cv::Mat& rls_w, cv::Mat& src, cv::Mat& dst) {
+    // recover data
+    if (src.depth() == CV_8U) src.convertTo(src, CV_32F, 1.0 / 255.0);
+    src.copyTo(dst);
+
+    if (rls_p.empty() || rls_w.empty()) {
+        rls_p = cv::Mat::ones(src.size(), CV_32F) * 1.5;
+        rls_w = cv::Mat::ones(src.size(), CV_32F) * 0.5;
+    }
+    // estimation of w
+    else {
+
+        // convert image to logarithmic domain
+        cv::Mat rls_d;
+        cv::log(src, rls_d);
+
+        for (size_t j = 0; j < rls_p.rows; j++) {
+            for (size_t i = 0; i < rls_p.cols; i++) {
+                float p = rls_p.at<float>(j, i);
+                float w = rls_w.at<float>(j, i);
+                float d = rls_d.at<float>(j, i);
+                p = p - (p * p) / (1 + p);
+                w = w + p * (d - w);
+
+                rls_p.at<float>(j, i) = p;
+                rls_w.at<float>(j, i) = w;
+            }
+        }
+
+        // convert back
+        cv::exp(rls_w, dst);
+        cv::normalize(dst, dst, 0, 1, cv::NORM_MINMAX);
+    }
+}
 } /* namespace sonar_processing  */

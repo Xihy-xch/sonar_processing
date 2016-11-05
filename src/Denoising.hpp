@@ -10,6 +10,7 @@ namespace denoising {
 
 void homomorphic_filter(cv::InputArray _src, cv::OutputArray _dst, int iterations);
 
+void rls(cv::Mat& rls_p, cv::Mat& rls_w, cv::Mat& src, cv::Mat& dst);
 
 } /* namespace denoising */
 
