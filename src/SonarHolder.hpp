@@ -46,14 +46,14 @@ public:
                float beam_width,
                uint32_t bin_count,
                uint32_t beam_count);
-               
+
     void ResetBins(std::vector<float> bins);
 
 
     std::vector<float> bins() const {
         return bins_;
     }
-    
+
     void set_bins(std::vector<float> bins) {
         bins_ = bins;
         std::copy(bins.begin(), bins.end(), bins_.begin());
@@ -93,7 +93,7 @@ public:
     uint32_t beam_count() const  {
         return beam_count_;
     }
-    
+
     uint32_t total_elements() const {
         return total_elements_;
     }
@@ -110,7 +110,19 @@ public:
         return cart_points_;
     }
 
-     void cart_points(const std::vector<int>& indices, std::vector<cv::Point2f>& points) const {
+    const std::vector<int>& cart_to_polar() const {
+        return cart_to_polar_;
+    }
+
+    int cart_to_polar_index(int index) const  {
+        return cart_to_polar_[index];
+    }
+
+    int cart_to_polar_index(int x, int y) const  {
+        return cart_to_polar_[y * cart_size_.width + x];
+    }
+
+    void cart_points(const std::vector<int>& indices, std::vector<cv::Point2f>& points) const {
          points.resize(indices.size());
         for (int i = 0; i < indices.size(); i++) points[i] = cart_points_[indices[i]];
     }
@@ -134,7 +146,7 @@ public:
     cv::Mat cart_image() const {
         return cart_image_;
     }
-    
+
     cv::Mat raw_image() const {
         return raw_image_;
     }
@@ -200,7 +212,7 @@ public:
     }
 
     void CopyTo(SonarHolder& out) const;
-    
+
     void CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
 
     void CopyHeaderData(SonarHolder& out) const;
@@ -208,7 +220,7 @@ public:
     void CopyBinsValues(SonarHolder& out) const;
 
     void CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
-    
+
     void SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices);
 
 private:
@@ -219,13 +231,13 @@ private:
     void InitializeCartesianImage();
     void SetCartesianToPolarSector(uint32_t polar_idx);
     void LinearPolarToCartesianImage(cv::OutputArray dst);
-    void WeightedPolarToCartesianImage(cv::OutputArray dst);    
+    void WeightedPolarToCartesianImage(cv::OutputArray dst);
 
     std::vector<float> BuildBeamBearings(float start_beam, float beam_width, uint32_t beam_count);
 
     std::vector<float> bins_;
     std::vector<float> bearings_;
-    
+
     std::vector<uchar> bins_mask_;
 
     uint32_t bin_count_;
