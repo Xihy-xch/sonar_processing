@@ -3,15 +3,13 @@
 namespace sonar_processing {
 
 double qs::MSE(cv::Mat& I1, cv::Mat& I2) {
-    CV_Assert(I1.depth() == CV_8U && I2.depth() == CV_8U);
+    CV_Assert(I1.depth() == CV_32F && I2.depth() == CV_32F);
 
-    double mse = 0;
-    for (size_t i = 0; i < I1.rows; i++) {
-        for (size_t j = 0; j < I1.cols; j++) {
-            mse += (I1.at<double>(i, j) - I2.at<double>(i, j)) * (I1.at<double>(i, j) - I2.at<double>(i, j));
-        }
-    }
-    mse /= I1.total();
+    cv::Mat diff;
+    cv::absdiff(I1, I2, diff);
+    diff = diff.mul(diff);
+
+    double mse = cv::sum(diff)[0] / (I1.total());
     return mse;
 }
 
@@ -20,7 +18,7 @@ double qs::RMSE(cv::Mat& I1, cv::Mat& I2) {
 }
 
 double qs::PSNR(cv::Mat& I1, cv::Mat& I2) {
-    CV_Assert(I1.depth() == CV_8U && I2.depth() == CV_8U);
+    CV_Assert(I1.depth() == CV_32F && I2.depth() == CV_32F);
 
     double mse = MSE(I1,  I2);
     double psnr = 10.0 * log10((255 * 255) / mse);
@@ -28,7 +26,7 @@ double qs::PSNR(cv::Mat& I1, cv::Mat& I2) {
 }
 
 cv::Scalar qs::MSSIM( const cv::Mat& I1, const cv::Mat& I2) {
-    CV_Assert(I1.depth() == CV_8U && I2.depth() == CV_8U);
+    CV_Assert(I1.depth() == CV_32F && I2.depth() == CV_32F);
 
     const double C1 = 6.5025, C2 = 58.5225;
     /***************************** INITS **********************************/
