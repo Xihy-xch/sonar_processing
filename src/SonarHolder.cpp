@@ -234,58 +234,6 @@ void SonarHolder::SetCartesianToPolarSector(uint32_t polar_idx) {
     }
 }
 
-int SonarHolder::GetMinAngleDistance(std::vector<float> angles, std::vector<int> indices, float alpha, int& angle_index) const {
-    int index = -1;
-    float min_dist = FLT_MAX;
-
-    for (size_t i = 0; i < angles.size(); i++) {
-        if (indices[i] != -1) {
-            float dist = fabs(alpha - angles[i]);
-
-            if (dist > M_PI) dist = fabs(dist - 2 * M_PI);
-
-            if (dist < min_dist) {
-                index = indices[i];
-                min_dist = dist;
-                angle_index = i;
-            }
-        }
-    }
-
-    return index;
-}
-
-void SonarHolder::GetNeighborhoodAngles(int origin_index, int index, std::vector<int>& neighbors_indices, std::vector<float>& angles, int neighbor_size) const {
-    size_t total_neighbors = neighbor_size * neighbor_size;
-
-    uint32_t beam = index / bin_count_;
-    uint32_t bin = index % bin_count_;
-
-    cv::Point2f point = cv::Point(-1, -1);
-    cv::Point2f center_point = cart_center_points_[origin_index];
-
-    neighbors_indices.assign(total_neighbors, -1);
-    angles.assign(total_neighbors, 0.0);
-
-    int j = 0;
-    int neighbor_size_2 = neighbor_size / 2;
-    for (int i = 0; i < total_neighbors; i++) {
-        int x = (i % neighbor_size) - neighbor_size_2;
-        int y = (i / neighbor_size) - neighbor_size_2;
-        int bi = (beam+y < 0 || beam+y >= beam_count_) ? -1 : beam+y;
-        int bj = (bin+x < 0 || bin+x >= bin_count_) ? -1 : bin+x;
-        int idx = bi * bin_count_ + bj;
-
-        if (bi != -1 && bj != -1 && idx != index) {
-            point = cart_center_points_[idx];
-            float dx = center_point.x - point.x;
-            float dy = center_point.y - point.y;
-            angles[i] = atan2(dy, dx);
-            neighbors_indices[i] = idx;
-        }
-    }
-}
-
 void SonarHolder::GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size) const {
     size_t total_neighbors = neighbor_size * neighbor_size;
 

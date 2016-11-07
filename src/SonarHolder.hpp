@@ -173,14 +173,6 @@ public:
         return cv::boundingRect(cv::Mat(pts));
     }
 
-    int GetMinAngleDistance(std::vector<float> angles, std::vector<int> indices, float alpha) const {
-        int angle;
-        return GetMinAngleDistance(angles, indices, alpha, angle);
-    }
-
-    int GetMinAngleDistance(std::vector<float> angles, std::vector<int> indices, float alpha, int& angle_index) const;
-    
-    void GetNeighborhoodAngles(int origin_index, int index, std::vector<int>& neighbors_indices, std::vector<float>& angles, int neighbor_size = 3) const;
     void GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size = 3) const;
 
     cv::Point2f sector_top_left_point(int polar_index) const {
