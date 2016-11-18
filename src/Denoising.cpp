@@ -16,9 +16,10 @@ void RLS::infinite_window(cv::InputArray _src, cv::OutputArray _dst) {
     cv::Mat dst = _dst.getMat();
 
     // initialize coefficients
-    if (rls_p.empty() || rls_w.empty()) {
+    if (rls_p.empty() || rls_w.empty() || src.size() != rls_p.size()) {
         rls_p = cv::Mat::ones(src.size(), CV_32F) * 0.5;
         rls_w = cv::Mat::zeros(src.size(), CV_32F);
+        frames.clear();
     }
 
     // estimation of w parameters and its covariance p
