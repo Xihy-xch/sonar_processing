@@ -118,6 +118,14 @@ std::vector<std::vector<cv::Point> > remove_low_intensities_contours(cv::InputAr
 
 std::vector<std::vector<cv::Point> > convexhull(std::vector<std::vector<cv::Point> > contours);
 
+cv::Mat get_sonar_mask( const std::vector<float>& bearings, uint32_t bin_count, uint32_t beam_count, uint32_t frame_width, uint32_t frame_height);
+
+void extract_roi_masks (const cv::Mat& cart_image,
+                        const std::vector<float>& bearings,
+                        uint32_t beam_count, uint32_t bin_count,
+                        cv::Mat& roi_cartesian, cv::Mat& roi_polar,
+                        float alpha = 0.05);
+
 } /* namespace preprocessing */
 
 } /* namespace sonar_processing */
