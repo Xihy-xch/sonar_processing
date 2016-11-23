@@ -43,7 +43,6 @@ void RLS::infinite_window(cv::InputArray _src, cv::OutputArray _dst) {
 
         // convert back to nonlinear space
         cv::exp(rls_w, dst);
-        cv::normalize(dst, dst, 0, 1, cv::NORM_MINMAX);
     }
 }
 
@@ -76,12 +75,11 @@ void RLS::sliding_window(cv::InputArray _src, cv::OutputArray _dst) {
             }
         }
     }
+    // store current frame
+    frames.push_back(src.clone());
 
     // update coefficients
     infinite_window(src, dst);
-
-    // store current frame
-    frames.push_back(src.clone());
 }
 
 // Recursive Least Square Filter algorithm with dynamic data window size
