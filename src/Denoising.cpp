@@ -7,19 +7,16 @@ namespace sonar_processing {
 namespace denoising {
 
 // Standard Recursive Least Square Filter algorithm
-void RLS::infinite_window(cv::InputArray _src, cv::OutputArray _dst) {
-    // recover data
-    cv::Mat src = _src.getMat();
-    if (src.depth() == CV_8U) src.convertTo(src, CV_32F, 1.0 / 255.0);
-
-    src.copyTo(_dst);
-    cv::Mat dst = _dst.getMat();
+cv::Mat RLS::infinite_window(const cv::Mat& src) {
+    CV_Assert(src.depth() == CV_32F);
+    cv::Mat dst;
 
     // initialize coefficients
     if (rls_p.empty() || rls_w.empty() || src.size() != rls_p.size()) {
         rls_p = cv::Mat::ones(src.size(), CV_32F) * 0.5;
         rls_w = cv::Mat::zeros(src.size(), CV_32F);
         frames.clear();
+        src.copyTo(dst);
     }
 
     // estimation of w parameters and its covariance p
@@ -44,16 +41,12 @@ void RLS::infinite_window(cv::InputArray _src, cv::OutputArray _dst) {
         // convert back to nonlinear space
         cv::exp(rls_w, dst);
     }
+    return dst;
 }
 
 // Recursive Least Square Filter algorithm with fixed data window
-void RLS::sliding_window(cv::InputArray _src, cv::OutputArray _dst) {
-    // recover data
-    cv::Mat src = _src.getMat();
-    if (src.depth() == CV_8U) src.convertTo(src, CV_32F, 1.0 / 255.0);
-
-    src.copyTo(_dst);
-    cv::Mat dst = _dst.getMat();
+cv::Mat RLS::sliding_window(const cv::Mat& src) {
+    CV_Assert(src.depth() == CV_32F);
 
     // check for downdate
     if (frames.size() == window_size) {
@@ -75,22 +68,17 @@ void RLS::sliding_window(cv::InputArray _src, cv::OutputArray _dst) {
             }
         }
     }
+
     // store current frame
     frames.push_back(src.clone());
 
     // update coefficients
-    infinite_window(src, dst);
+    return infinite_window(src.clone());
 }
 
 // Recursive Least Square Filter algorithm with dynamic data window size
-void RLS::adaptative_window(cv::InputArray _src, cv::OutputArray _dst) {
-
-    // recover data
-    cv::Mat src = _src.getMat();
-    if (src.depth() == CV_8U) src.convertTo(src, CV_32F, 1.0 / 255.0);
-
-    src.copyTo(_dst);
-    cv::Mat dst = _dst.getMat();
+cv::Mat RLS::adaptative_window(const cv::Mat& src) {
+    CV_Assert(src.depth() == CV_32F);
 
     // if window size is higher than frame size, decrease 1x
     if (frames.size() > window_size) {
@@ -114,16 +102,16 @@ void RLS::adaptative_window(cv::InputArray _src, cv::OutputArray _dst) {
     }
 
     // run sliding window and update coefficients
-    sliding_window(src, dst);
+    cv::Mat dst = sliding_window(src.clone());
 
     // adaptative window size
     double mse_i = qs::MSE(src, dst);
     if (!mse_0 && mse_i && frames.size() == window_size) mse_0 = mse_i;
-
     if (mse_0) {
         if ((mse_i <= mse_0) && (window_size < 10)) window_size++;
         if ((mse_i > mse_0) && (window_size > 2)) window_size--;
     }
+    return dst;
 }
 
 // Homomorphic Filtering with the log function

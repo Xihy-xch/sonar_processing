@@ -31,9 +31,9 @@ public:
 
     ~RLS(){};
 
-    void infinite_window(cv::InputArray _src, cv::OutputArray _dst);
-    void sliding_window(cv::InputArray _src, cv::OutputArray _dst);
-    void adaptative_window(cv::InputArray _src, cv::OutputArray _dst);
+    cv::Mat infinite_window(const cv::Mat& src);
+    cv::Mat sliding_window(const cv::Mat& src);
+    cv::Mat adaptative_window(const cv::Mat& src);
     void setWindow_size(uint value) { window_size = value; };
     uint getWindow_size() { return window_size; };
 
