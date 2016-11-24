@@ -96,6 +96,8 @@ void show_scale(const std::string& title, const cv::Mat& source, double scale = 
 
 cv::Rect_<float> bounding_rect(std::vector<cv::Point2f> points);
 
+bool are_equals (const cv::Mat& image1, const cv::Mat& image2);
+
 } /* namespace image_utils */
 
 } /* sonar_processing image_utils */

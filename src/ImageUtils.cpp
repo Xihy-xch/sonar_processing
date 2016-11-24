@@ -291,4 +291,9 @@ cv::Rect_<float> image_utils::bounding_rect(std::vector<cv::Point2f> points) {
     return cv::Rect_<float>(top_left, bottom_right);
 }
 
+bool image_utils::are_equals (const cv::Mat& image1, const cv::Mat& image2) {
+    cv::Mat diff = image1 != image2;
+    return (cv::countNonZero(diff) == 0);
+}
+
 } /* sonar_processing image_utils */
