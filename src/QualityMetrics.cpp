@@ -2,7 +2,7 @@
 
 namespace sonar_processing {
 
-double qs::MSE(cv::Mat& I1, cv::Mat& I2) {
+double qs::MSE(const cv::Mat& I1, const cv::Mat& I2) {
     CV_Assert(I1.depth() == CV_32F && I2.depth() == CV_32F);
 
     cv::Mat diff;
@@ -13,11 +13,11 @@ double qs::MSE(cv::Mat& I1, cv::Mat& I2) {
     return mse;
 }
 
-double qs::RMSE(cv::Mat& I1, cv::Mat& I2) {
+double qs::RMSE(const cv::Mat& I1, const cv::Mat& I2) {
     return sqrt(MSE(I1, I2));
 }
 
-double qs::PSNR(cv::Mat& I1, cv::Mat& I2) {
+double qs::PSNR(const cv::Mat& I1, const cv::Mat& I2) {
     CV_Assert(I1.depth() == CV_32F && I2.depth() == CV_32F);
 
     double mse = MSE(I1,  I2);

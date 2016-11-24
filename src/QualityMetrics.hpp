@@ -14,7 +14,7 @@ namespace qs {
      * @param I2: denoised image
      * @return the MSE value.
      */
-    double MSE(cv::Mat& I1, cv::Mat& I2);
+    double MSE(const cv::Mat& I1, const cv::Mat& I2);
 
     /**
      * Root Mean Square Error.
@@ -24,7 +24,7 @@ namespace qs {
      * @param I2: denoised image
      * @return the MSE value.
      */
-    double RMSE(cv::Mat& I1, cv::Mat& I2);
+    double RMSE(const cv::Mat& I1, const cv::Mat& I2);
 
     /**
      * Peak Signal to Noise Ratio.
@@ -34,7 +34,7 @@ namespace qs {
      * @param I2: denoised image
      * @return the MSE value.
      */
-    double PSNR(cv::Mat& I1, cv::Mat& I2);
+    double PSNR(const cv::Mat& I1, const cv::Mat& I2);
 
     /**
      * Multiscale Structural Similarity.
