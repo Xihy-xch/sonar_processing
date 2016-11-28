@@ -296,6 +296,17 @@ bool image_utils::are_equals (const cv::Mat& image1, const cv::Mat& image2) {
     return (cv::countNonZero(diff) == 0);
 }
 
+void image_utils::draw_line(cv::Mat image, std::vector<cv::Point2f>::iterator first, std::vector<cv::Point2f>::iterator last, cv::Scalar line_color) {
+    if (first != last) {
+        std::vector<cv::Point2f>::iterator it = first;
+        while (it != (last-1)) {
+            cv::Point2f pt0 = *it;
+            cv::Point2f pt1 = *(it+1);
+            cv::line(image, pt0, pt1, line_color, 2);
+            it++;
+        }
+    }
+}
 
 void image_utils::rgb2lab(cv::InputArray src_arr, cv::OutputArray dst_arr) {
     const float t = 0.008856;

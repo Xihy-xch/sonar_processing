@@ -117,6 +117,7 @@ cv::Rect_<float> bounding_rect(std::vector<cv::Point2f> points);
 
 bool are_equals (const cv::Mat& image1, const cv::Mat& image2);
 
+void draw_line(cv::Mat image, std::vector<cv::Point2f>::iterator first, std::vector<cv::Point2f>::iterator last, cv::Scalar line_color);
 
 void rgb2lab(cv::InputArray src_arr, cv::OutputArray dst_arr);
 
