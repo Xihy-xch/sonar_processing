@@ -5,6 +5,10 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/ScannerBase.hpp"
+
+#define DEFAULT_NEIGHBORHOOD_SIZE       7
+#define DEFAULT_NEIGHBORHOOD_START_BIN  100
 
 namespace sonar_processing {
 
@@ -49,6 +53,12 @@ public:
 
     void ResetBins(const std::vector<float>& bins);
 
+    void BuildNeighborhoodTable(ScannerBase* scanner,
+                                int bin_count, int beam_count,
+                                int neighborhood_size = DEFAULT_NEIGHBORHOOD_SIZE,
+                                int start_bin = DEFAULT_NEIGHBORHOOD_START_BIN);
+
+    void GetCartesianNeighborhoodIndices(int polar_index, std::vector<int>& indices, int nsize) const;
 
     void GetPolarLimits(int polar_index, float& start_bin, float& final_bin, float& start_beam, float& final_beam) const;
 
@@ -218,6 +228,11 @@ public:
         x0 = cart_line_limits_[line * 2 + 0];
         x1 = cart_line_limits_[line * 2 + 1];
     }
+
+    const std::vector<int>& neighborhood_table() const {
+        return neighborhood_table_;
+    }
+
     void GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size = 3) const;
 
     cv::Point2f sector_top_left_point(int polar_index) const {
@@ -298,6 +313,11 @@ private:
     cv::Mat cart_image_;
     cv::Mat cart_image_mask_;
     cv::Mat raw_image_;
+
+    std::vector<int> neighborhood_table_;
+    int neighborhood_table_bin_count_;
+    int neighborhood_table_beam_count_;
+    int neighborhood_size_;
 };
 
 } /* namespace sonar_processing */

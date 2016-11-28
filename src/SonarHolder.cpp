@@ -14,6 +14,9 @@ SonarHolder::SonarHolder()
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
     , interpolation_type_(WEIGHTED)
+    , neighborhood_size_(-1)
+    , neighborhood_table_bin_count_(-1)
+    , neighborhood_table_beam_count_(-1)
 {
 }
 
@@ -28,6 +31,9 @@ SonarHolder::SonarHolder(
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
     , interpolation_type_(interpolation_type)
+    , neighborhood_size_(-1)
+    , neighborhood_table_bin_count_(-1)
+    , neighborhood_table_beam_count_(-1)
 {
     Reset(bins, start_beam, beam_width, bin_count, beam_count);
 }
@@ -347,6 +353,9 @@ void SonarHolder::CopyHeaderData(SonarHolder& out) const {
 
     out.radius_ = radius_;
     out.angles_ = angles_;
+
+    out.neighborhood_table_ = neighborhood_table_;
+    out.neighborhood_size_ = neighborhood_size_;
 }
 
 void SonarHolder::CopyBinsValues(SonarHolder& out) const {
@@ -382,6 +391,70 @@ void SonarHolder::SetBinsOfInterest(const std::vector<int>& start_line_indices, 
         int last  = beam*bin_count_+bin_count_-1;
         std::fill(bins_.begin()+first, bins_.begin()+last, 0);
         std::fill(bins_mask_.begin()+first, bins_mask_.begin()+last, 0);
+    }
+}
+
+
+void SonarHolder::BuildNeighborhoodTable(ScannerBase* scanner, int bin_count, int beam_count, int neighborhood_size, int start_bin) {
+
+    if (!is_neighborhood_table_modified(bin_count, beam_count, neighborhood_size)){
+        return;
+    }
+
+    int neighborhood_total = neighborhood_size * neighborhood_size;
+
+    neighborhood_table_bin_count_ = bin_count;
+    neighborhood_table_beam_count_ = beam_count;
+    neighborhood_size_ = neighborhood_size;
+    neighborhood_table_.assign(bin_count_ * beam_count_ * neighborhood_total, -1);
+
+    scanner->set_sonar_holder(this);
+    std::vector<int> indices(neighborhood_size * neighborhood_size, -1);
+
+    for (int bin = start_bin; bin < bin_count_-2; bin++) {
+        for (int beam = 1; beam < beam_count_-2; beam++) {
+            int polar_index = index_at(beam, bin);
+            std::fill(indices.begin(), indices.end(), -1);
+
+            scanner->GetCartesianNeighborhood(polar_index, neighborhood_size_, indices);
+
+            int offset = beam*bin_count_*neighborhood_total+bin*neighborhood_total;
+            std::copy(indices.begin(), indices.end(), neighborhood_table_.begin()+offset);
+        }
+    }
+}
+
+void SonarHolder::GetCartesianNeighborhoodIndices(int polar_index, std::vector<int>& indices, int nsize) const {
+
+    if (nsize > neighborhood_size_) {
+        throw std::invalid_argument("The input neighborhood size is bigger than the neighborhood table size");
+    }
+
+    if (indices.empty()) {
+        indices.resize(nsize * nsize, -1);
+    }
+
+    int beam = index_to_beam(polar_index);
+    int bin = index_to_bin(polar_index);
+    int neighborhood_total = neighborhood_size_*neighborhood_size_;
+    int offset = beam*bin_count_*neighborhood_total+bin*neighborhood_total;
+
+    if (nsize == neighborhood_size_) {
+        std::copy(neighborhood_table_.begin()+offset, neighborhood_table_.begin()+offset+neighborhood_total, indices.begin());
+        return;
+    }
+
+    int nsize_2 = nsize / 2;
+    int neighborhood_size_2 = neighborhood_size_ / 2;
+
+    int y_offset = neighborhood_size_2-nsize_2;
+    int x_offset = neighborhood_size_2-nsize_2;
+
+    for (int y = 0; y < nsize; y++) {
+        int noffset = offset+(y+y_offset)*neighborhood_size_+x_offset;
+        std::copy(neighborhood_table_.begin()+noffset,
+                  neighborhood_table_.begin()+noffset+nsize,
+                  indices.begin()+y*nsize);
     }
 }
 
