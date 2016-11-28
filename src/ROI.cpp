@@ -1,84 +1,47 @@
-#include "base/Plot.hpp"
-#include "sonar_processing/Utils.hpp"
-#include "ROI.hpp"
+#include "sonar_processing/ROI.hpp"
+#include "sonar_processing/PolarSonarROIDetector.hpp"
+#include "sonar_processing/CartesianSonarROIDetector.hpp"
 
 namespace sonar_processing {
 
-namespace roi {
-
-SonarROIDetector::SonarROIDetector(
-    const SonarHolder& sonar_holder,
-    int initial_bin, 
-    ScanningType scanning_type)
-    : sonar_holder_(sonar_holder)
-    , initial_bin_(initial_bin)
-    , scanning_type_(scanning_type)
-{
-}
-
-SonarROIDetector::~SonarROIDetector() {
-}
-
-void SonarROIDetector::GetBinsOfInterest(int& start_bin, int& final_bin, float start_bin_cutoff, float final_bin_cutoff) {
-    start_bin = GetStartBinPolar(start_bin_cutoff);
-    final_bin = GetFinalBinPolar(final_bin_cutoff);
-}
-
-int SonarROIDetector::GetStartBinPolar(float cutoff) {
-    std::vector<float> averages;
-    basic_operations::average_lines(sonar_holder_, initial_bin_, sonar_holder_.bin_count() / 2, averages);
-    return GetCutOffBinPolar(averages, initial_bin_, cutoff);
-}
-
-int SonarROIDetector::GetFinalBinPolar(float cutoff) {
-
-    int first_bin = sonar_holder_.bin_count() - (sonar_holder_.bin_count() / 3);
-    int last_bin = sonar_holder_.bin_count() - 2;
-    int beam = sonar_holder_.beam_count() / 2;
-
-    std::vector<float> low_probs(last_bin - first_bin, 0);
-    std::vector<float> high_probs(last_bin - first_bin, 0);
-
-    for (int bin = first_bin, i = 0; bin < last_bin; bin++, i++) {
-        std::vector<float> values;
-        basic_operations::line_values(sonar_holder_, sonar_holder_.index_at(beam, bin), values);
-        float low_prob, high_prob;
-        EvalProbs(values, 0.05, low_probs[i], high_probs[i]);
-    }
-
-    cv::Mat1f low_probs_mat(low_probs);
-    cv::blur(low_probs_mat, low_probs_mat, cv::Size(25, 25));
-    cv::normalize(low_probs_mat, low_probs_mat, 0, 1, cv::NORM_MINMAX);
-
-    return GetCutOffBinPolar(low_probs, first_bin, cutoff);
-}
-
-int SonarROIDetector::GetCutOffBinPolar(std::vector<float> values, int offset, float cutoff) {
+/* SonarROIDetector Implementation */
+int SonarROIDetector::GetCutOffIndex(std::vector<float> values, float cutoff) {
     std::vector<float> accsum;
     utils::accumulative_sum<float>(values, accsum);
 
     std::vector<float> accsum_norm(accsum.size());
-
     cv::Mat1f accsum_mat(accsum);
     cv::Mat1f accsum_norm_mat(accsum_norm);
 
     cv::normalize(accsum_mat, accsum_norm_mat, 0, 1, cv::NORM_MINMAX);
 
-    return std::upper_bound(accsum_norm.begin(), accsum_norm.end(), cutoff) - accsum_norm.begin() + offset;
+    return std::upper_bound(accsum_norm.begin(), accsum_norm.end(), cutoff) - accsum_norm.begin();
 }
 
-void SonarROIDetector::EvalProbs(std::vector<float> values, float thresh, float& low_prob, float& high_prob) {
-    int low_count = 0;
-    int high_count = 0;
+void SonarROIDetector::GetLowProbs(std::vector<float> values, float thresh, float& prob) {
+    int count = 0;
 
     for (int i = 0; i < values.size(); i++) {
-        if (values[i] < thresh) low_count++; else high_count++;
+        if (values[i] < thresh) count++;
     }
 
-    low_prob = low_count / (float)values.size();
-    high_prob = high_count / (float)values.size();
+    prob = count / (float)values.size();
 }
 
-} /* namespace roi */
+/* End SonarROIDetector Implementation */
+    
+namespace roi {
+    
+void polar::bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& final_bin, int initial_bin) {
+    sonar_processing::PolarSonarROIDetector roi_detector(sonar_holder, initial_bin);
+    roi_detector.GetBinsOfInterest(start_bin, final_bin, 0.2, 0.5);
+}
 
-} /* namespace sonar_processing  */
+void cartesian::bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& final_bin, int initial_bin) {
+    sonar_processing::CartesianSonarROIDetector roi_detector(sonar_holder, initial_bin);
+    roi_detector.GetBinsOfInterest(start_bin, final_bin, 0.12, 0.5);
+}
+
+} /* namespace sonar_processing */
+
+} /* namespace roi */

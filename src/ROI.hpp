@@ -1,50 +1,54 @@
 #ifndef sonar_processing_SonarROI_hpp
 #define sonar_processing_SonarROI_hpp
 
-#include <stdio.h>
+#include <vector>
+#include <opencv2/opencv.hpp>
+#include "sonar_processing/Utils.hpp"
 #include "sonar_processing/SonarHolder.hpp"
-#include "sonar_processing/BasicOperations.hpp"
 
 namespace sonar_processing {
 
-namespace roi {
-
 class SonarROIDetector {
 public:
+    SonarROIDetector(
+        const SonarHolder& sonar_holder,
+        int initial_bin)
+        : sonar_holder_(sonar_holder)
+        , initial_bin_(initial_bin)
+    {
+    }
 
-    enum ScanningType {
-        kPolarScanning = 1,
-        kCartesianScanning = 2
-    };
+    virtual ~SonarROIDetector()
+    {
+    }
 
-    SonarROIDetector(const SonarHolder& sonar_holder, int initial_bin = 1, ScanningType scanning_type = kPolarScanning);
-    virtual ~SonarROIDetector();
+    void GetBinsOfInterest(int& start_bin, int& final_bin, float start_bin_cutoff, float final_bin_cutoff) {
+        start_bin = GetStartBin(start_bin_cutoff);
+        final_bin = GetFinalBin(final_bin_cutoff);
+    }
 
-    void GetBinsOfInterest(int& start_bin, int& final_bin, float start_bin_cuttoff = 0.15, float final_bin_cutoff = 0.5);
+protected:
 
-private:
-
-    int GetStartBinPolar(float cutoff);
-    int GetFinalBinPolar(float cutoff);
-    int GetCutOffBinPolar(std::vector<float> values, int offset, float cutoff);
-
-    void EvalProbs(std::vector<float> values, float thresh, float& low_prob, float& high_prob);
+    virtual int GetStartBin(float cutoff) = 0;
+    virtual int GetFinalBin(float cutoff) = 0;
+    virtual int GetCutOffIndex(std::vector<float> values, float cutoff);
+    virtual void GetLowProbs(std::vector<float> values, float thresh, float& prob);
 
     const SonarHolder& sonar_holder_;
     int initial_bin_;
-    ScanningType scanning_type_;
 };
-    
+
+namespace roi {
+
 namespace polar {
 
-inline void bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& final_bin, int initial_bin = 1) {
-    SonarROIDetector roi_detector(sonar_holder, initial_bin);
-    roi_detector.GetBinsOfInterest(start_bin, final_bin);
-}
+void bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& final_bin, int initial_bin = 1);
 
 } /* namespace polar */
 
 namespace cartesian {
+
+void bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& final_bin, int initial_bin = 1);
 
 } /* namespace cartesian */
 
