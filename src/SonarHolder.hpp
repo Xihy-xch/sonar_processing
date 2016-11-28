@@ -248,6 +248,7 @@ private:
     void InitializeCartesianPoints();
     void InitializePolarMapping();
     void InitializeCartesianImage();
+    void InitializeCartesianImageMask();
     void SetCartesianToPolarSector(uint32_t polar_idx);
     void LinearPolarToCartesianImage(cv::OutputArray dst);
     void WeightedPolarToCartesianImage(cv::OutputArray dst);
@@ -277,6 +278,7 @@ private:
     int interpolation_type_;
 
     cv::Mat cart_image_;
+    cv::Mat cart_image_mask_;
     cv::Mat raw_image_;
 };
 

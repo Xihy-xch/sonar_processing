@@ -103,6 +103,7 @@ void SonarHolder::Initialize() {
 
     InitializeCartesianPoints();
     InitializePolarMapping();
+    InitializeCartesianImageMask();
 }
 
 void SonarHolder::InitializeCartesianPoints() {
@@ -136,6 +137,20 @@ void SonarHolder::InitializeCartesianImage() {
     else {
         throw std::invalid_argument("the interpolation type is invalid");
     }
+}
+
+void SonarHolder::InitializeCartesianImageMask() {
+    cart_image_mask_ = cv::Mat::zeros(cart_size_, CV_8UC1);
+    uchar *ptr = reinterpret_cast<uchar*>(cart_image_mask_.data);
+    for (size_t cart_idx = 0; cart_idx < cart_to_polar_.size(); cart_idx++) {
+        if (cart_to_polar_[cart_idx] != -1) {
+            int polar_idx = cart_to_polar_[cart_idx];
+            if (bins_mask_[polar_idx]) {
+                *(ptr + cart_idx) = 255;
+            }
+        }
+    }
+
 }
 
 void SonarHolder::LinearPolarToCartesianImage(cv::OutputArray _dst) {
@@ -287,6 +302,7 @@ void SonarHolder::CopyTo(SonarHolder& out) const {
     CopyBinsValues(out);
     raw_image_.copyTo(out.raw_image_);
     cart_image_.copyTo(out.cart_image_);
+    cart_image_mask_.copyTo(out.cart_image_mask_);
 }
 
 void SonarHolder::CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const {
@@ -294,6 +310,7 @@ void SonarHolder::CopyTo(SonarHolder& out, const std::vector<int>& start_line_in
     CopyBinsValues(out, start_line_indices, final_line_indices);
     out.raw_image_ = cv::Mat(out.bins_).reshape(1, out.beam_count_);
     out.InitializeCartesianImage();
+    out.InitializeCartesianImageMask();
 }
 
 void SonarHolder::CopyHeaderData(SonarHolder& out) const {
