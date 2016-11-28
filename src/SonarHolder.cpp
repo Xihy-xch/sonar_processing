@@ -81,7 +81,7 @@ void SonarHolder::Reset(
 {
     Reset(bins, BuildBeamBearings(start_beam, beam_width, beam_count), beam_width, bin_count, beam_count);
 }
-void SonarHolder::ResetBins(std::vector<float> bins){
+void SonarHolder::ResetBins(const std::vector<float>& bins){
     Reset(bins, bearings_, beam_width_, bin_count_, beam_count_);
 }
 

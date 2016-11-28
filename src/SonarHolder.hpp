@@ -47,9 +47,22 @@ public:
                uint32_t bin_count,
                uint32_t beam_count);
 
-    void ResetBins(std::vector<float> bins);
+    void ResetBins(const std::vector<float>& bins);
 
 
+    void GetPolarLimits(int polar_index, float& start_bin, float& final_bin, float& start_beam, float& final_beam) const;
+
+    void CopyTo(SonarHolder& out) const;
+
+    void CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
+
+    void CopyHeaderData(SonarHolder& out) const;
+
+    void CopyBinsValues(SonarHolder& out) const;
+
+    void CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
+
+    void SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices);
     std::vector<float> bins() const {
         return bins_;
     }
@@ -59,7 +72,7 @@ public:
         std::copy(bins.begin(), bins.end(), bins_.begin());
     }
 
-    std::vector<uchar> bins_mask() const {
+    const std::vector<uchar>& bins_mask() const {
         return bins_mask_;
     }
 
@@ -78,7 +91,7 @@ public:
         }
     }
 
-    float beam_value_at(int beam) {
+    float beam_value_at(int beam) const {
         return bearings_[beam];
     }
 
@@ -106,7 +119,7 @@ public:
         return beam_width_ / (float)beam_count_;
     }
 
-    std::vector<cv::Point2f> cart_points() const {
+    const std::vector<cv::Point2f>& cart_points() const {
         return cart_points_;
     }
 
@@ -131,7 +144,7 @@ public:
         return cart_center_points_[index];
     }
 
-    std::vector<cv::Point2f> cart_center_points() const {
+    const std::vector<cv::Point2f>& cart_center_points() const {
         return cart_center_points_;
     }
 
@@ -143,11 +156,15 @@ public:
         return cart_origin_;
     }
 
-    cv::Mat cart_image() const {
+    const cv::Mat& cart_image() const {
         return cart_image_;
     }
 
-    cv::Mat raw_image() const {
+    const cv::Mat& cart_image_mask() const {
+        return cart_image_mask_;
+    }
+
+    const cv::Mat& raw_image() const {
         return raw_image_;
     }
 
@@ -205,23 +222,25 @@ public:
 
     std::vector<cv::Point2f> GetSectorPoints(int polar_index) const;
 
-    void GetPolarLimits(int polar_index, float& start_bin, float& final_bin, float& start_beam, float& final_beam) const;
-
     cv::Rect_<float> sector_bounding_rect(int polar_index) const {
         return image_utils::bounding_rect(GetSectorPoints(polar_index));
     }
 
-    void CopyTo(SonarHolder& out) const;
+    bool is_neighborhood_table_modified(int bin_count, int beam_count, int neighborhood_size = DEFAULT_NEIGHBORHOOD_SIZE) const {
 
-    void CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
+        if (!neighborhood_table_.empty() &&
+            neighborhood_table_bin_count_ == bin_count &&
+            neighborhood_table_beam_count_ == beam_count &&
+            neighborhood_size_ == neighborhood_size) {
+            return false;
+        }
 
-    void CopyHeaderData(SonarHolder& out) const;
+        return true;
+    }
 
-    void CopyBinsValues(SonarHolder& out) const;
-
-    void CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
-
-    void SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices);
+    bool has_neighborhood_table() const {
+        return !neighborhood_table_.empty();
+    }
 
 private:
 
@@ -262,6 +281,5 @@ private:
 };
 
 } /* namespace sonar_processing */
-
 
 #endif /* sonar_util_SonarHolder_hpp */
