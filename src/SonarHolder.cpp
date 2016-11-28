@@ -272,7 +272,10 @@ void SonarHolder::GetNeighborhood(int polar_index, std::vector<int>& neighbors_i
     uint32_t bin = polar_index % bin_count_;
 
     cv::Point2f point = cv::Point(-1, -1);
-    neighbors_indices.assign(total_neighbors, -1);
+
+    if (neighbors_indices.empty()) {
+        neighbors_indices.resize(total_neighbors, -1);
+    }
 
     int j = 0;
     int neighbor_size_2 = neighbor_size / 2;

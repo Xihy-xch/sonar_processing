@@ -85,7 +85,11 @@ public:
     }
 
     void values(const std::vector<int>& indices, std::vector<float>& values) const {
-        values.assign(indices.size(), 0.0);
+
+        if (values.empty()) {
+            values.assign(indices.size(), 0.0);
+        }
+
         for (size_t i = 0; i < indices.size(); i++) {
             if (indices[i] > 0) values[i] = bins_[indices[i]];
         }
