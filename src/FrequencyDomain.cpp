@@ -215,6 +215,67 @@ void filters::gaussian_bandreject(const cv::Size& size, double sigma, double W, 
     cv::merge(to_merge, 2, dst);
 }
 
+void filters::central_frequencies_reject(const cv::Size& size, double D, int n, int center_distance, cv::OutputArray dstx, cv::OutputArray dsty) {
+    uint32_t w = size.width;
+    uint32_t h = size.height;
+
+    int cx = w / 2;
+    int cy = h / 2;
+
+    cv::Mat filterx = cv::Mat(size, CV_8UC1);
+    cv::Mat filtery = cv::Mat(size, CV_8UC1);
+
+    filterx.setTo(255);
+    filtery.setTo(255);
+
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            double dy = y - cy;
+            double dx = x - cx;
+
+            double rx = sqrt(dx * dx);
+            double ry = sqrt(dy * dy);
+            double r = sqrt(dx * dx + dy * dy);
+
+            if (r > center_distance) {
+                filterx.at<uchar>(y, x) = 1.0 / (1.0 + pow(D / rx, 2.0 * n)) * 255;
+                filtery.at<uchar>(y, x) = 1.0 / (1.0 + pow(D / ry, 2.0 * n)) * 255;
+            }
+        }
+    }
+
+    filterx.convertTo(filterx, CV_32F, 1.0/255.0);
+    filtery.convertTo(filtery, CV_32F, 1.0/255.0);
+
+    cv::Mat to_mergex[] = {filterx, filterx};
+    cv::merge(to_mergex, 2, dstx);
+
+    cv::Mat to_mergey[] = {filtery, filtery};
+    cv::merge(to_mergey, 2, dsty);
+}
+
+void filters::noise_removal(cv::InputArray src_arr, cv::OutputArray dst_arr, double D0, int n0, double D1, int n1, int center_distance) {
+    cv::Mat src = src_arr.getMat();
+    cv::Mat freq;
+    dft::forward(src, freq);
+    dft::shift(freq);
+
+    cv::Mat tf_x, tf_y;
+    cv::Mat tf_bwlp;
+
+    filters::butterworth_lowpass(freq.size(), D0, n0, tf_bwlp);
+    filters::central_frequencies_reject(freq.size(), D1, n1, center_distance, tf_x, tf_y);
+
+    freq = tf_bwlp.mul(freq);
+    freq = tf_x.mul(freq);
+    freq = tf_y.mul(freq);
+
+    cv::Mat mat;
+    dft::inverse_abs(freq, mat);
+    cv::normalize(mat, mat, 0, 1, cv::NORM_MINMAX);
+    mat(cv::Rect(0, 0, src.cols, src.rows)).copyTo(dst_arr);
+}
+
 void dft::shift(cv::Mat src) {
     int cx = src.cols/2;
     int cy = src.rows/2;

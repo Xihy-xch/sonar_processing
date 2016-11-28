@@ -21,6 +21,12 @@ namespace filters {
     void butterworth_bandreject(const cv::Size& size, double D, int n, double W, cv::OutputArray dst);
     void gaussian_bandreject(const cv::Size& size, double sigma, double W, cv::OutputArray dst);
 
+    void central_frequencies_reject(const cv::Size& size, double D, int n, int center_distance, 
+                                    cv::OutputArray dstx, cv::OutputArray dsty);
+
+    void noise_removal(cv::InputArray src_arr, cv::OutputArray dst_arr,
+                       double D0 = 25, int n0 = 2, double D1 = 2, int n1 = 1, int center_distance = 5);
+
 } /* namespace filters */
 
 namespace dft {
