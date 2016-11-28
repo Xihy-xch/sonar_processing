@@ -182,7 +182,10 @@ void SonarHolder::LinearPolarToCartesianImage(cv::OutputArray _dst) {
     float *dst_ptr = reinterpret_cast<float*>(dst.data);
     for (size_t cart_idx = 0; cart_idx < cart_to_polar_.size(); cart_idx++) {
         if (cart_to_polar_[cart_idx] != -1) {
-            *(dst_ptr + cart_idx) = bins_[cart_to_polar_[cart_idx]];
+            int polar_idx = cart_to_polar_[cart_idx];
+            if (bins_mask_[polar_idx]) {
+                *(dst_ptr + cart_idx) = bins_[polar_idx];
+            }
         }
     }
 }
