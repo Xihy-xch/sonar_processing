@@ -394,6 +394,28 @@ void SonarHolder::SetBinsOfInterest(const std::vector<int>& start_line_indices, 
     }
 }
 
+void SonarHolder::CopyBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices, std::vector<float>& dst) const {
+    if (dst.empty()) {
+        dst.assign(bins_.size(), 0);
+    }
+
+    for (size_t i = 0; i < start_line_indices.size(); i++) {
+        int bin   = index_to_bin(start_line_indices[i]);
+        int beam  = index_to_beam(start_line_indices[i]);
+        int first = beam*bin_count_+bin;
+        int last  = beam*bin_count_+bin_count_-1;
+        std::copy(bins_.begin()+first, bins_.begin()+last, dst.begin()+first);
+    }
+
+    for (size_t i = 0; i < final_line_indices.size(); i++) {
+        int bin   = index_to_bin(final_line_indices[i]);
+        int beam  = index_to_beam(final_line_indices[i]);
+        int first = beam*bin_count_+bin;
+        int last  = beam*bin_count_+bin_count_-1;
+        std::fill(dst.begin()+first, dst.begin()+last, 0);
+    }
+
+}
 
 void SonarHolder::BuildNeighborhoodTable(ScannerBase* scanner, int bin_count, int beam_count, int neighborhood_size, int start_bin) {
 
