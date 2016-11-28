@@ -157,6 +157,11 @@ public:
         return cart_to_polar_[y * cart_size_.width + x];
     }
 
+    cv::Point cart_position_from_index(int cart_index) {
+        return cv::Point(cart_index % cart_size_.width,
+                         cart_index / cart_size_.width);
+    }
+
     void cart_points(const std::vector<int>& indices, std::vector<cv::Point2f>& points) const {
          points.resize(indices.size());
         for (int i = 0; i < indices.size(); i++) points[i] = cart_points_[indices[i]];
