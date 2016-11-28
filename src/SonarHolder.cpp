@@ -103,6 +103,7 @@ void SonarHolder::Initialize() {
 
     InitializeCartesianPoints();
     InitializePolarMapping();
+    InitializeCartesianLineLimits();
     InitializeCartesianImageMask();
 }
 
@@ -124,6 +125,21 @@ void SonarHolder::InitializePolarMapping() {
 
     for (uint32_t i = 0; i < total_elements_; i++) {
         SetCartesianToPolarSector(i);
+    }
+}
+
+void SonarHolder::InitializeCartesianLineLimits() {
+    cart_line_limits_.assign(cart_size_.height * 2, -1);
+    for (size_t y = 0; y < cart_size_.height; y++) {
+        int mid_column = cart_size_.width / 2;
+
+        for (int x = mid_column; x >= 0 && cart_to_polar_index(x, y) != -1; x--) {
+            cart_line_limits_[y * 2 + 0] = x;
+        }
+
+        for (int x = mid_column; x < cart_size_.width && cart_to_polar_index(x, y) != -1; x++) {
+            cart_line_limits_[y * 2 + 1] = x;
+        }
     }
 }
 

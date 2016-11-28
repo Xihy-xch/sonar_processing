@@ -202,6 +202,10 @@ public:
         return cv::boundingRect(cv::Mat(pts));
     }
 
+    void cart_line_limits(int line, int& x0, int& x1) const {
+        x0 = cart_line_limits_[line * 2 + 0];
+        x1 = cart_line_limits_[line * 2 + 1];
+    }
     void GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size = 3) const;
 
     cv::Point2f sector_top_left_point(int polar_index) const {
@@ -248,6 +252,7 @@ private:
     void InitializeCartesianPoints();
     void InitializePolarMapping();
     void InitializeCartesianImage();
+    void InitializeCartesianLineLimits();
     void InitializeCartesianImageMask();
     void SetCartesianToPolarSector(uint32_t polar_idx);
     void LinearPolarToCartesianImage(cv::OutputArray dst);
@@ -268,6 +273,7 @@ private:
     std::vector<cv::Point2f> cart_points_;
     std::vector<cv::Point2f> cart_center_points_;
 
+    std::vector<int> cart_line_limits_;
     std::vector<int> cart_to_polar_;
     std::vector<float> radius_;
     std::vector<float> angles_;
