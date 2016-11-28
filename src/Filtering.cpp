@@ -4,33 +4,31 @@ namespace sonar_processing {
 
 namespace filtering {
 
-void FilterApplier::PerformConvolution(std::vector<float>& dst, const std::vector<float>& kernel, int ksize) const {
-    dst.assign(sonar_holder_.total_elements(), 0);
-    for (int index= 0; index < sonar_holder_.total_elements(); index++) {
-        if (validate_index(index)) {
-            std::vector<int> neighbor_indices;
-            basic_operations::neighborhood(sonar_holder_, index, ksize, neighbor_indices);
-            if (validate_neighborhood_indices(neighbor_indices)) {
-                std::vector<float> values;
-                sonar_holder_.values(neighbor_indices, values);
-                cv::Mat kernel_mat = cv::Mat(kernel).reshape(1, ksize);
-                cv::Mat values_mat = cv::Mat(values).reshape(1, ksize);
-                dst[index] = ApplyKernel(values_mat, kernel_mat);
-            }
-        }
+FilterApplier::FilterApplier(const SonarHolder& sonar_holder)
+    : sonar_holder_(sonar_holder)
+{
+    if (!sonar_holder_.has_neighborhood_table()) {
+        throw std::invalid_argument("The Neighborhood Table was not built.");
     }
 }
 
-float FilterApplier::ApplyKernel(cv::Mat src, cv::Mat kernel) const {
-
-    float result = 0;
-    for (int y = 0; y < kernel.rows; y++) {
-        for (int x = 0; x < kernel.cols; x++) {
-            result += kernel.at<float>(y, x) * src.at<float>(y, x);
-        }
+void FilterApplier::PerformConvolution(std::vector<float>& dst, const std::vector<float>& kernel, int ksize) const {
+    if (dst.empty()) {
+        dst.assign(sonar_holder_.total_elements(), 0);
     }
 
-    return result;
+    std::vector<int> indices(ksize * ksize, -1);
+    std::vector<float> values(ksize * ksize, 0);
+
+    for (int index= 0; index < sonar_holder_.total_elements(); index++) {
+        if (validate_index(index)) {
+            sonar_holder_.GetCartesianNeighborhoodIndices(index, indices, ksize);
+            if (validate_neighborhood_indices(indices)) {
+                sonar_holder_.values(indices, values);
+                dst[index] = apply_kernel(values, kernel);
+            }
+        }
+    }
 }
 
 } /* namespace filtering */

@@ -14,11 +14,8 @@ class FilterApplier {
 
 public:
 
-    FilterApplier(const SonarHolder& sonar_holder)
-        : sonar_holder_(sonar_holder)
-    {
-    }
-    
+    FilterApplier(const SonarHolder& sonar_holder);
+
     virtual ~FilterApplier() {
     }
 
@@ -29,9 +26,9 @@ private:
     bool validate_index(int index) const {
         int bin = sonar_holder_.index_to_bin(index);
         int beam = sonar_holder_.index_to_beam(index);
-        std::vector<uchar> mask = sonar_holder_.bins_mask();
+        const std::vector<uchar>& mask = sonar_holder_.bins_mask();
 
-        return bin >= 1 && bin <= sonar_holder_.bin_count()-2 && 
+        return bin >= 1 && bin <= sonar_holder_.bin_count()-2 &&
                beam >= 1 && beam <= sonar_holder_.beam_count()-2 &&
                mask[index] != 0;
     }
@@ -40,7 +37,11 @@ private:
         return (std::find(indices.begin(), indices.end(), -1) == indices.end());
     }
 
-    float ApplyKernel(cv::Mat src, cv::Mat kernel) const;
+    float apply_kernel(const std::vector<float>& src, const std::vector<float>& kernel) const {
+        float result = 0;
+        for (size_t i = 0; i < kernel.size(); i++) result += kernel[i] * src[i];
+        return result;
+    }
 
     const SonarHolder& sonar_holder_;
 
@@ -54,8 +55,8 @@ inline void filter2d(const SonarHolder& sonar_holder, std::vector<float>& dst, c
 inline void filter2d(const SonarHolder& sonar_holder, std::vector<float>& dst, const cv::Mat& kernel) {
     assert(kernel.depth() == CV_32F);
     filter2d(sonar_holder, dst, image_utils::mat2vector<float>(kernel), kernel.rows);
-}
 
+}
 } /* namespace filtering */
 
 } /* namespace sonar_processing */
