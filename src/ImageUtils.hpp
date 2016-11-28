@@ -32,6 +32,14 @@ void mat2vector(const cv::Mat& mat, std::vector<T>& array) {
     }
 }
 
+inline void split_channels(const cv::Mat& src, cv::Mat& channel0, cv::Mat& channel1, cv::Mat& channel2) {
+    cv::Mat channels[3];
+    cv::split(src, channels);
+    channel0 = channels[0];
+    channel1 = channels[1];
+    channel2 = channels[2];
+}
+
 cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count);
 
 void equalize_histogram_32f(cv::Mat src, cv::Mat dst);
