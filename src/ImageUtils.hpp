@@ -21,6 +21,17 @@ std::vector<T> mat2vector(cv::Mat mat) {
     return array;
 }
 
+template <typename T>
+void mat2vector(const cv::Mat& mat, std::vector<T>& array) {
+    if (mat.isContinuous()) {
+        array.assign((T*)mat.datastart, (T*)mat.dataend);
+    } else {
+        for (int i = 0; i < mat.rows; ++i) {
+            array.insert(array.end(), (T*)mat.ptr<uchar>(i), (T*)mat.ptr<uchar>(i)+mat.cols);
+        }
+    }
+}
+
 cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count);
 
 void equalize_histogram_32f(cv::Mat src, cv::Mat dst);
