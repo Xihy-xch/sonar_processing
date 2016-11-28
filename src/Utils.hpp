@@ -1,6 +1,7 @@
 #ifndef sonar_processing_Utilities_Hpp
 #define sonar_processing_Utilities_Hpp
 
+#include <cstdio>
 #include <stdint.h>
 #include <vector>
 #include <sys/time.h>
