@@ -2,23 +2,33 @@
 #define sonar_processing_PolarCartesianScanner_hpp
 
 #include <stdio.h>
-#include "sonar_processing/SonarHolder.hpp"
+#include "sonar_processing/ScannerBase.hpp"
 
 namespace sonar_processing {
 
-class PolarCartesianScanner {
+class PolarCartesianScanner : public ScannerBase {
 
 public:
-    PolarCartesianScanner(const SonarHolder& sonar_holder);
+    PolarCartesianScanner();
+
+    PolarCartesianScanner(SonarHolder const *sonar_holder);
     ~PolarCartesianScanner();
 
-    void GetCartesianLine(int from_index, std::vector<int>& indices, int total_elements = -1);
+    void GetCartesianLine(int from_index, std::vector<int>& indices);
 
-    void GetCartesianLine(int from_index, cv::Point2f from_point, std::vector<int>& indices, int total_elements = -1);
+    void GetCartesianLine(int from_index, std::vector<int>& indices, int total_elements);
 
-    void GetCartesianColumn(int from_index, std::vector<int>& indices, int total_elements = -1);
+    void GetCartesianLine(int from_index, cv::Point2f from_point, std::vector<int>& indices);
 
-    void GetCartesianColumn(int from_index, cv::Point2f from_point, std::vector<int>& indices, int total_elements = -1);
+    void GetCartesianLine(int from_index, cv::Point2f from_point, std::vector<int>& indices, int total_elements);
+
+    void GetCartesianColumn(int from_index, std::vector<int>& indices);
+
+    void GetCartesianColumn(int from_index, std::vector<int>& indices, int total_elements);
+
+    void GetCartesianColumn(int from_index, cv::Point2f from_point, std::vector<int>& indices);
+
+    void GetCartesianColumn(int from_index, cv::Point2f from_point, std::vector<int>& indices, int total_elements);
 
     void GetCartesianNeighborhood(int from_index, int nsize, std::vector<int>& indices);
 
@@ -30,9 +40,16 @@ public:
 
 private:
 
-    enum ScanningDirection {
+    enum ScanningOrientation {
         kScanningHorizontal = 0,
         kScanningVertical
+    };
+
+    enum ScanningDirection {
+        kScanningLeft = 0,
+        kScanningRight,
+        kScanningUp,
+        kScanningDown,
     };
 
     typedef float (PolarCartesianScanner::*DistanceFunction)(cv::Point2f pt0, cv::Point2f pt1);
@@ -60,6 +77,7 @@ private:
         cv::Point2f from_point;
         DistanceFunction distance_function;
         CompareFunction compare_function;
+        ScanningDirection direction;
     };
 
     float call_distance_function(DistanceFunction distance_function, cv::Point2f pt0, cv::Point2f pt1) {
@@ -94,12 +112,14 @@ private:
 
     ScanningArguments left_scanning_arguments(int from_index, cv::Point2f from_point) {
         ScanningArguments args = horizontal_scanning_arguments(from_index, from_point);
+        args.direction = kScanningLeft;
         args.compare_function = &PolarCartesianScanner::left_compare;
         return args;
     }
 
     ScanningArguments right_scanning_arguments(int from_index, cv::Point2f from_point) {
         ScanningArguments args = horizontal_scanning_arguments(from_index, from_point);
+        args.direction = kScanningRight;
         args.compare_function = &PolarCartesianScanner::right_compare;
         return args;
     }
@@ -110,17 +130,21 @@ private:
 
     ScanningArguments up_scanning_arguments(int from_index, cv::Point2f from_point) {
         ScanningArguments args = vertical_scanning_arguments(from_index, from_point);
+        args.direction = kScanningUp;
         args.compare_function = &PolarCartesianScanner::up_compare;
         return args;
     }
 
     ScanningArguments down_scanning_arguments(int from_index, cv::Point2f from_point) {
         ScanningArguments args = vertical_scanning_arguments(from_index, from_point);
+        args.direction = kScanningDown;
         args.compare_function = &PolarCartesianScanner::down_compare;
         return args;
     }
 
     void PerformCartesianScanning(std::vector<int>& indices, ScanningArguments args, int total_elements = -1);
+
+    void PerformCartesianScanning(std::vector<int>& indices, ScanningArguments args, int offset, int total_elements);
 
     int NextCartesianIndex(int index, ScanningArguments args);
 
@@ -128,12 +152,12 @@ private:
 
     bool IsScanningComplete(int index, int count, int total_elements = -1);
 
-    void EvaluateIntersectionPoints(int from_index, cv::Point2f from_point, const std::vector<int>& indices, ScanningDirection direction, std::vector<cv::Point2f>& points);
+    void EvaluateIntersectionPoints(int from_index, cv::Point2f from_point, const std::vector<int>& indices, ScanningOrientation orientation, std::vector<cv::Point2f>& points);
 
     void EvaluateSectorLimitPoints(
         int from_index,
         cv::Point2f from_point,
-        ScanningDirection direction,
+        ScanningOrientation orientation,
         cv::Point2f& start_point,
         cv::Point2f& final_point);
 
@@ -143,20 +167,24 @@ private:
         cv::Rect_<float> rc,
         cv::Point2f from_point,
         float resolution,
-        ScanningDirection direction,
+        ScanningOrientation orientation,
         float& start_position,
         float& final_position,
         float& scanning_position);
 
-    cv::Point2f scanning_point(ScanningDirection d, float x, float y) {
+    cv::Point2f scanning_point(ScanningOrientation d, float x, float y) {
         return (d == kScanningHorizontal) ? cv::Point2f(x, y) :
                ((d == kScanningVertical)  ? cv::Point2f(y, x) :
                cv::Point2f(-1. -1));
     }
 
-    void SetMiddlePoint(ScanningDirection d, cv::Point2f start_point, cv::Point2f final_point, cv::Point2f& result_point);
+    void SetMiddlePoint(ScanningOrientation d, cv::Point2f start_point, cv::Point2f final_point, cv::Point2f& result_point);
 
-    const SonarHolder& sonar_holder_;
+    void InitializeCache(int nsize);
+
+    std::vector<int> line_indices_cache_;
+    std::vector<int> column_indices_cache_;
+    std::vector<int> neighborhood_3x3_cache_;
 
 };
 

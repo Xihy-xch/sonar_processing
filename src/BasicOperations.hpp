@@ -9,7 +9,7 @@ namespace sonar_processing {
 namespace basic_operations {
 
 inline void line_indices(const SonarHolder& sonar_holder, int from_index, std::vector<int>& indices) {
-    PolarCartesianScanner polar_cartesian_scanner(sonar_holder);
+    PolarCartesianScanner polar_cartesian_scanner(&sonar_holder);
     polar_cartesian_scanner.GetCartesianLine(from_index, indices);
 }
 
@@ -18,7 +18,7 @@ inline void line_indices_from_bin(const SonarHolder& sonar_holder, int bin, std:
 }
 
 inline void column_indices(const SonarHolder& sonar_holder, int from_index, std::vector<int>& indices) {
-    PolarCartesianScanner polar_cartesian_scanner(sonar_holder);
+    PolarCartesianScanner polar_cartesian_scanner(&sonar_holder);
     polar_cartesian_scanner.GetCartesianColumn(from_index, indices);
 }
 
@@ -39,22 +39,22 @@ inline void column_values(const SonarHolder& sonar_holder, int from_index, std::
 }
 
 inline void intersetion_line(const SonarHolder& sonar_holder, int from_index, int total_elements, std::vector<int>& indices, std::vector<cv::Point2f>& points) {
-    PolarCartesianScanner polar_cartesian_scanner(sonar_holder);
+    PolarCartesianScanner polar_cartesian_scanner(&sonar_holder);
     polar_cartesian_scanner.GetIntersectionLine(from_index, total_elements, indices, points);
 }
 
 inline void intersetion_column(const SonarHolder& sonar_holder, int from_index, int total_elements, std::vector<int>& indices, std::vector<cv::Point2f>& points) {
-    PolarCartesianScanner polar_cartesian_scanner(sonar_holder);
+    PolarCartesianScanner polar_cartesian_scanner(&sonar_holder);
     polar_cartesian_scanner.GetIntersectionColumn(from_index, total_elements, indices, points);
 }
 
 inline void neighborhood(const SonarHolder& sonar_holder, int from_index, int nsize, std::vector<int>& indices) {
-    PolarCartesianScanner polar_cartesian_scanner(sonar_holder);
+    PolarCartesianScanner polar_cartesian_scanner(&sonar_holder);
     polar_cartesian_scanner.GetCartesianNeighborhood(from_index, nsize, indices);
 }
 
 inline void neighborhood(const SonarHolder& sonar_holder, int from_index, int nsize, std::vector<int>& indices, std::vector<cv::Point2f>& points) {
-    PolarCartesianScanner polar_cartesian_scanner(sonar_holder);
+    PolarCartesianScanner polar_cartesian_scanner(&sonar_holder);
     polar_cartesian_scanner.GetCartesianNeighborhood(from_index, nsize, indices, points);
 }
 
