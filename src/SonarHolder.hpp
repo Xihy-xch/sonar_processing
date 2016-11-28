@@ -99,6 +99,14 @@ public:
         return bearings_[beam];
     }
 
+    float first_beam_value() const {
+        return bearings_.front();
+    }
+
+    float last_beam_value() const {
+        return bearings_.back();
+    }
+
     const std::vector<float>& bearings() const {
         return bearings_;
     }
