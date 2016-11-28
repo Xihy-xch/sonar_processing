@@ -98,6 +98,9 @@ cv::Rect_<float> bounding_rect(std::vector<cv::Point2f> points);
 
 bool are_equals (const cv::Mat& image1, const cv::Mat& image2);
 
+
+void rgb2lab(cv::InputArray src_arr, cv::OutputArray dst_arr);
+
 } /* namespace image_utils */
 
 } /* sonar_processing image_utils */

@@ -296,4 +296,45 @@ bool image_utils::are_equals (const cv::Mat& image1, const cv::Mat& image2) {
     return (cv::countNonZero(diff) == 0);
 }
 
+
+void image_utils::rgb2lab(cv::InputArray src_arr, cv::OutputArray dst_arr) {
+    const float t = 0.008856;
+
+    cv::Mat src = src_arr.getMat();
+
+    cv::Mat lab = cv::Mat::zeros(src.size(), CV_32FC3);
+
+    for (int row = 0; row < src.rows; row++) {
+        for (int col = 0; col < src.cols; col++) {
+            float red = src.at<cv::Vec3f>(row, col)[0];
+            float green = src.at<cv::Vec3f>(row, col)[1];
+            float blue = src.at<cv::Vec3f>(row, col)[2];
+
+            float x = 0.412453 * red + 0.357580 * green + 0.180423 * blue;
+            float y = 0.212671 * red + 0.715160 * green + 0.072169 * blue;
+            float z = 0.019334 * red + 0.119193 * green + 0.950227 * blue;
+
+            float y3 = pow(y, 1.0/3.0);
+
+            x = x / 0.950456;
+            z = z / 1.088754;
+
+            float fx, fy, fz;
+
+            fx = (x > t) ? pow(x, 1.0/3.0) : 7.787 * x + 16.0/116.0;
+            fy = (y > t) ? y3 : 7.787 * y + 16.0/116.0;
+            fz = (z > t) ? pow(z, 1.0/3.0) : 7.787 * z + 16.0/116.0;
+
+            float l, a, b;
+            l = (y > t) ? 116.0 * y3 - 16.0 : 903.3 * y;
+            a = 500.0 * (fx - fy);
+            b = 200.0 * (fy - fz);
+
+            lab.at<cv::Vec3f>(row, col) = cv::Vec3f(l, a, b);
+        }
+    }
+
+    lab.copyTo(dst_arr);
+}
+
 } /* sonar_processing image_utils */
