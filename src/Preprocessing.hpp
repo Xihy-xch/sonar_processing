@@ -92,8 +92,6 @@ std::vector<double> background_features_estimation(cv::Mat mat, uint32_t bsize);
 
 void background_features_difference(cv::InputArray src_arr, cv::OutputArray dst_arr, std::vector<double> features, uint32_t bsize);
 
-std::vector<cv::Point> find_biggest_contour(cv::Mat src);
-
 float calc_spatial_variation_coefficient(std::vector<float> classes_val);
 float spatial_variation_coefficient(cv::Mat src);
 void spatial_variation_coefficient_filter(cv::InputArray src_arr, cv::OutputArray dst_arr);
@@ -125,6 +123,8 @@ void extract_roi_masks (const cv::Mat& cart_image,
                         uint32_t beam_count, uint32_t bin_count,
                         cv::Mat& roi_cartesian, cv::Mat& roi_polar,
                         float alpha = 0.05);
+
+std::vector<cv::Point> find_biggest_contour(cv::InputArray src_arr);
 
 } /* namespace preprocessing */
 

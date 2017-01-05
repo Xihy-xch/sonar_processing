@@ -166,24 +166,6 @@ std::vector<std::vector<cv::Point> > preprocessing::find_contours(cv::Mat src, i
 
 }
 
-std::vector<cv::Point> preprocessing::find_biggest_contour(cv::Mat src) {
-    std::vector<std::vector<cv::Point> > contours = find_contours(src);
-
-    std::vector<cv::Point> biggest_contour;
-    int last_size = 0;
-    for( int i = 0; i < contours.size(); i++ ) {
-
-        cv::Rect rc = cv::boundingRect( cv::Mat(contours[i]) );
-        int size = rc.width * rc.height;
-        if (size > last_size) {
-            last_size = size;
-            biggest_contour = contours[i];
-        }
-    }
-
-    return biggest_contour;
-}
-
 std::vector<std::vector<cv::Point> > preprocessing::adaptative_find_contours_and_filter(cv::Mat src, double area_factor, double width_factor, double height_factor) {
     std::vector<std::vector<cv::Point> > filtering_contours, nonzero_area_contours;
     std::vector<std::vector<cv::Point> > contours = find_contours(src);
@@ -1026,6 +1008,36 @@ void preprocessing::extract_roi_masks (const cv::Mat& sonar_image,
             else break;
         }
     }
+}
+
+std::vector<cv::Point> preprocessing::find_biggest_contour(cv::InputArray src_arr) {
+    cv::Mat src = src_arr.getMat();
+    cv::Mat im_contours;
+
+    if (src_arr.depth() == CV_32F) {
+        src.convertTo(im_contours, CV_8U, 255.0);
+    }
+    else {
+        src.copyTo(im_contours);
+    }
+
+    std::vector<std::vector<cv::Point> > contours;
+    cv::findContours(im_contours, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+
+    int last_size_area = 0;
+    int biggest_index = -1;
+    for( int i = 0; i < contours.size(); i++ ) {
+        cv::RotatedRect box = cv::minAreaRect(cv::Mat(contours[i]));
+        float size_area = box.size.area();
+        if (size_area > last_size_area) {
+            last_size_area = size_area;
+            biggest_index = i;
+        }
+    }
+
+    std::vector<cv::Point> contour;
+    cv::convexHull(cv::Mat(contours[biggest_index]), contour, false );
+    return contour;
 }
 
 } /* namespace sonar_processing */
