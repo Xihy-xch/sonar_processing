@@ -9,24 +9,25 @@ int CartesianSonarROIDetector::GetStartBin(float cutoff) {
     cv::Point2f first_point = sonar_holder_.cart_center_point(initial_bin_, beam);
     cv::Point2f last_point = sonar_holder_.cart_center_point(sonar_holder_.bin_count()/2, beam);
 
+    size_t total_lines = floor(first_point.y-last_point.y);
+    size_t first_y = (size_t)first_point.y;
+    size_t last_y = (size_t)last_point.y;
+
     cv::Mat cart_image = sonar_holder_.cart_image();
 
-    std::vector<float> mean_values(first_point.y - last_point.y, 0);
+    std::vector<float> mean_values(total_lines, 0);
 
-    for (size_t line = first_point.y, i = 0; line >= last_point.y; line--, i++) {
-
+    for (size_t line = first_y, i = 0; line > last_y && i < total_lines; line--, i++) {
         int x0, x1;
         sonar_holder_.cart_line_limits(line, x0, x1);
-
         if (x0 >= 0 && x1 >= 0 && (x1-x0) > 0) {
             mean_values[i] = cv::mean(cart_image.row(line).colRange(x0, x1))[0];
         }
     }
 
     int cutoff_index = GetCutOffIndex(mean_values, cutoff);
-    int line = first_point.y - cutoff_index;
+    int line = first_y - cutoff_index;
     int polar_index = sonar_holder_.cart_to_polar_index(sonar_holder_.cart_size().width / 2, line);
-
     return sonar_holder_.index_to_bin(polar_index);
 }
 
