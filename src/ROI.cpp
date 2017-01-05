@@ -42,6 +42,11 @@ void cartesian::bins_of_interest(const SonarHolder& sonar_holder, int& start_bin
     roi_detector.GetBinsOfInterest(start_bin, final_bin, 0.12, 0.5);
 }
 
+int cartesian::find_start_bin(const SonarHolder& sonar_holder, float cutoff, int initial_bin) {
+    sonar_processing::CartesianSonarROIDetector roi_detector(sonar_holder, initial_bin);
+    return roi_detector.GetStartBin(cutoff);
+}
+
 } /* namespace sonar_processing */
 
 } /* namespace roi */

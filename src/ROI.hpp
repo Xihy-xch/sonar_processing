@@ -27,10 +27,10 @@ public:
         final_bin = GetFinalBin(final_bin_cutoff);
     }
 
-protected:
-
     virtual int GetStartBin(float cutoff) = 0;
     virtual int GetFinalBin(float cutoff) = 0;
+
+protected:
     virtual int GetCutOffIndex(std::vector<float> values, float cutoff);
     virtual void GetLowProbs(std::vector<float> values, float thresh, float& prob);
 
@@ -49,6 +49,8 @@ void bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& fina
 namespace cartesian {
 
 void bins_of_interest(const SonarHolder& sonar_holder, int& start_bin, int& final_bin, int initial_bin = 1);
+
+int find_start_bin(const SonarHolder& sonar_holder, float cutoff=0.03, int initial_bin=1);
 
 } /* namespace cartesian */
 
