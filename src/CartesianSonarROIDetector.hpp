@@ -25,10 +25,10 @@ public:
     virtual ~CartesianSonarROIDetector() {
     }
 
-protected:
-
     int GetStartBin(float cutoff);
     int GetFinalBin(float cutoff);
+
+protected:
 
     int last_final_bin_;
     int first_final_bin_;
