@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "sonar_processing/BasicOperations.hpp"
-#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/ImageUtil.hpp"
 #include "sonar_processing/SonarHolder.hpp"
 
 namespace sonar_processing {
@@ -54,7 +54,7 @@ inline void filter2d(const SonarHolder& sonar_holder, std::vector<float>& dst, c
 
 inline void filter2d(const SonarHolder& sonar_holder, std::vector<float>& dst, const cv::Mat& kernel) {
     assert(kernel.depth() == CV_32F);
-    filter2d(sonar_holder, dst, image_utils::mat2vector<float>(kernel), kernel.rows);
+    filter2d(sonar_holder, dst, image_util::mat2vector<float>(kernel), kernel.rows);
 
 }
 } /* namespace filtering */

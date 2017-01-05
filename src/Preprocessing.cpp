@@ -1,7 +1,7 @@
 #include "base/Plot.hpp"
 #include "sonar_util/Converter.hpp"
 #include "sonar_processing/Preprocessing.hpp"
-#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/ImageUtil.hpp"
 #include "sonar_processing/Utils.hpp"
 #include "sonar_processing/third_party/spline.h"
 
@@ -75,7 +75,7 @@ cv::Rect preprocessing::calc_horiz_roi(cv::Mat src, float alpha) {
     cv::Mat bin;
     cv::threshold(acc_sum, bin, thresh, 1.0, cv::THRESH_BINARY);
 
-    std::vector<float> bin_vec = image_utils::mat2vector<float>(bin);
+    std::vector<float> bin_vec = image_util::mat2vector<float>(bin);
     uint32_t new_x = std::find(bin_vec.begin(), bin_vec.end(), 1) - bin_vec.begin();
 
     return cv::Rect(cv::Point(new_x, 0), cv::Size(acc_sum.cols - new_x, src.rows));
@@ -89,8 +89,8 @@ void preprocessing::adaptative_clahe(cv::InputArray _src, cv::OutputArray _dst) 
     float best_entropy = 0.0;
     for (float c = 0.25; c <= 2; c++) {
         cv::Mat enhanced;
-        image_utils::clahe_mat8u(src, enhanced, c, cv::Size(8, 8));
-        float entropy = image_utils::entropy(enhanced, 256);
+        image_util::clahe_mat8u(src, enhanced, c, cv::Size(8, 8));
+        float entropy = image_util::entropy(enhanced, 256);
         if (entropy > best_entropy) {
             best_entropy = entropy;
             enhanced.copyTo(dst);
@@ -308,7 +308,7 @@ void preprocessing::difference_filter(cv::InputArray src_arr, cv::OutputArray ds
 
 cv::Mat preprocessing::remove_ground_distance(cv::Mat src, cv::Rect& horiz_roi) {
     cv::Mat eqhist = cv::Mat::zeros(src.size(), src.type());
-    image_utils::equalize_histogram_32f(src, eqhist);
+    image_util::equalize_histogram_32f(src, eqhist);
     cv::medianBlur(eqhist, eqhist, 5);
     cv::Mat result;
     src(horiz_roi = preprocessing::calc_horiz_roi(eqhist)).copyTo(result);
@@ -398,8 +398,8 @@ uint32_t preprocessing::find_first_higher(cv::Mat mat, uint32_t row) {
 std::vector<double> preprocessing::background_features_estimation(cv::Mat src, uint32_t bsize) {
     cv::Rect roi;
     cv::Mat mat = remove_ground_distance_accurate(src, roi);
-    image_utils::equalize_histogram_32f(mat, mat);
-    image_utils::clahe_32f(mat, mat);
+    image_util::equalize_histogram_32f(mat, mat);
+    image_util::clahe_32f(mat, mat);
 
     double mean_sum = 0;
     double stddev_sum = 0;
@@ -450,8 +450,8 @@ std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intens
     cv::Mat src = src_arr.getMat();
 
     cv::Mat mat = cv::Mat::zeros(src.size(), src.type());
-    image_utils::equalize_histogram_32f(src, mat);
-    image_utils::clahe_32f(mat, mat);
+    image_util::equalize_histogram_32f(src, mat);
+    image_util::clahe_32f(mat, mat);
 
     cv::imshow("mat", mat);
 
@@ -491,7 +491,7 @@ void preprocessing::contrast_filter(cv::InputArray src_arr, cv::OutputArray dst_
         uint32_t r = (src.cols > x + bsize) ? bsize : src.cols - x;
         cv::Rect roi = cv::Rect(x, 0, r, src.rows);
         cv::Mat block = dst(roi);
-        image_utils::adaptative_clahe(block, block, cv::Size(8, 8), max_entropy_thesh);
+        image_util::adaptative_clahe(block, block, cv::Size(8, 8), max_entropy_thesh);
     }
 }
 
@@ -831,7 +831,7 @@ void preprocessing::weak_target_thresholding(cv::InputArray src_arr, cv::OutputA
         double min, max;
         cv::minMaxLoc(grad_bin, &min, &max, NULL, NULL, mask);
         double delta = (max - min) * 0.1;
-        double thresh = image_utils::otsu_thresh_8u(grad_bin);
+        double thresh = image_util::otsu_thresh_8u(grad_bin);
 
         cv::threshold(grad_bin, bin, thresh + delta, 255, cv::THRESH_BINARY);
         remove_blobs(bin, grad_bin, cv::Size(5, 5), CV_RETR_LIST);
@@ -903,7 +903,7 @@ void preprocessing::remove_low_intensities_columns(cv::InputArray src_arr, cv::O
 
     cv::normalize(acc_sum, acc_sum, 0, 1, cv::NORM_MINMAX);
 
-    std::vector<float> v = image_utils::mat2vector<float>(acc_sum);
+    std::vector<float> v = image_util::mat2vector<float>(acc_sum);
     std::vector<float>::iterator low = std::lower_bound(v.begin(), v.end(), 0.7);
     uint32_t rx = (low - v.begin()) * bstep + cols_mid;
 
@@ -935,7 +935,7 @@ void preprocessing::weak_shadow_thresholding(cv::InputArray src_arr, cv::OutputA
         cv::Mat high_values;
         cv::threshold(block, high_values, 80, 255, cv::THRESH_BINARY);
         block.setTo(80, high_values);
-        cv::threshold(block, bin(roi), image_utils::otsu_thresh_8u(block) * 0.6, 255, cv::THRESH_BINARY_INV);
+        cv::threshold(block, bin(roi), image_util::otsu_thresh_8u(block) * 0.6, 255, cv::THRESH_BINARY_INV);
     }
 
     for (int i = 0; i < ground_distance_line.size()-1; i++){

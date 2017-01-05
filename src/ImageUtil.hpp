@@ -1,12 +1,12 @@
-#ifndef ImageUtils_hpp
-#define ImageUtils_hpp
+#ifndef sonar_processing_ImageUtil_hpp
+#define sonar_processing_ImageUtil_hpp
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
 namespace sonar_processing {
 
-namespace image_utils {
+namespace image_util {
 
 template <typename T>
 std::vector<T> mat2vector(cv::Mat mat) {
@@ -38,6 +38,49 @@ inline void split_channels(const cv::Mat& src, cv::Mat& channel0, cv::Mat& chann
     channel0 = channels[0];
     channel1 = channels[1];
     channel2 = channels[2];
+}
+
+template <typename T>
+inline T integral_image_sum(const cv::Mat& src, int x1, int y1, int x2, int y2) {
+    return src.at<T>(y1, x1)-src.at<T>(y2, x1)+src.at<T>(y2, x2)-src.at<T>(y1, x2);
+}
+
+template <typename T>
+inline T integral_image_sum(const cv::Mat& src, cv::Rect rc) {
+    return integral_image_sum<T>(src, rc.tl().x, rc.tl().y, rc.br().x, rc.br().y);
+}
+
+inline void apply_mask(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArray mask_arr) {
+    cv::Mat src = src_arr.getMat();
+    dst_arr.create(src.size(), src.type());
+    cv::Mat dst = cv::Mat::zeros(src.size(), src.type());
+    src.copyTo(dst, mask_arr);
+    dst.copyTo(dst_arr);
+}
+
+inline void show_image(const std::string& title, cv::InputArray src, int scale=1) {
+
+    if (scale == 1) {
+        cv::imshow(title, src);
+        return;
+    }
+
+    cv::Mat scaled; 
+    cv::resize(src, scaled, cv::Size(src.size().width/scale, src.size().height/scale));
+    cv::imshow(title, scaled);
+}
+
+inline void morphology(cv::InputArray src_arr, cv::OutputArray dst_arr, int type, cv::Size kernel_size, int iterations) {
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, kernel_size);
+    cv::morphologyEx(src_arr, dst_arr, type, kernel, cv::Point(-1, -1), iterations);
+}
+
+inline void erode(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size kernel_size, int iterations) {
+    morphology(src_arr, dst_arr, cv::MORPH_ERODE, kernel_size, iterations);
+}
+
+inline void dilate(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size kernel_size, int iterations) {
+    morphology(src_arr, dst_arr, cv::MORPH_DILATE, kernel_size, iterations);
 }
 
 cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count);
@@ -99,15 +142,15 @@ cv::Mat zeros_cols(cv::Mat src, std::vector<uint32_t> cols);
 
 cv::Mat horizontal_mirroring(cv::Mat src, std::vector<uint32_t> cols);
 
-double otsu_thresh_8u(const cv::Mat& src);
+double otsu_thresh_8u(const cv::Mat& src, cv::InputArray mask_arr = cv::noArray());
 
-double otsu_thresh_32f(const cv::Mat& src);
+double otsu_thresh_32f(const cv::Mat& src, cv::InputArray mask_arr = cv::noArray());
 
 cv::Mat to_mat8u(const cv::Mat& src, double scale);
 
 float entropy(const cv::Mat& src, int hist_size = 256);
 
-void adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size size = cv::Size(8, 8), float entropy_thresh = 7.5);
+void adaptative_clahe(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size size = cv::Size(8, 8), float entropy_thresh = 7.5, float final_clip_limit=2.0);
 
 void copymask(cv::InputArray src_arr, cv::InputArray mask_arr, cv::OutputArray dst_arr);
 
@@ -121,8 +164,28 @@ void draw_line(cv::Mat image, std::vector<cv::Point2f>::iterator first, std::vec
 
 void rgb2lab(cv::InputArray src_arr, cv::OutputArray dst_arr);
 
-} /* namespace image_utils */
+void horizontal_normalize(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArray mask_arr, int padding=0);
 
-} /* sonar_processing image_utils */
+void draw_contour(cv::InputArray src, cv::OutputArray dst, cv::Scalar color, const std::vector<cv::Point>& contour);
+
+void draw_mask_contour(cv::InputArray src, cv::OutputArray dst, cv::Scalar color, cv::InputArray mask);
+
+void draw_rotated_rect(cv::Mat& mat, cv::Scalar color, const cv::RotatedRect& box);
+
+void rotate(cv::InputArray src_arr, cv::OutputArray dst_arr, float angle, cv::Point2f center, cv::Size dst_size = cv::Size(-1, -1));
+
+cv::Rect get_bounding_rect(cv::InputArray src);
+
+void find_contour(const cv::Mat& src, std::vector<std::vector<cv::Point> >& contours);
+
+void draw_contour_min_area_rect(const cv::Mat& src, cv::Mat &dst, std::vector<cv::Point> contour);
+
+void create_min_area_rect_mask(std::vector<cv::Point> contour, cv::Mat &dst);
+
+void draw_text(cv::Mat& dst, const std::string& text, cv::Point pos, cv::Scalar color);
+
+} /* namespace image_util */
+
+} /* sonar_processing image_util */
 
 #endif /* ImageUtils_hpp */
