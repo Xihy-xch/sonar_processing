@@ -1,6 +1,7 @@
 #ifndef sonar_processing_Utilities_Hpp
 #define sonar_processing_Utilities_Hpp
 
+#include <fstream>
 #include <cstdio>
 #include <stdint.h>
 #include <vector>
@@ -42,6 +43,18 @@ void accumulative_sum(const std::vector<T>& src, std::vector<T>& dst) {
     for (size_t i = 1; i < src.size(); i++) dst[i] = dst[i-1] + src[i];
 }
 
+template <typename T>
+inline void csv_write(std::string filename, const std::vector<T> data) {
+    std::stringstream ss;
+    for (size_t i=0; i<data.size()-1; i++)  ss << data[i] << std::endl;
+    ss << data.back();
+
+    std::ofstream out;
+    out.open(filename.c_str());
+    out << ss.str();
+    out.close();
+}
+
 namespace now {
 
 inline static uint64_t microseconds() {
@@ -52,6 +65,12 @@ inline static uint64_t microseconds() {
 
 inline static uint64_t milliseconds() {
     return microseconds() / 1000;    
+}
+
+inline static std::string millisecs_str() {
+    std::stringstream ss;
+    ss << milliseconds();
+    return ss.str();
 }
 
 } /* namespace now */

@@ -26,19 +26,77 @@ SonarImagePreprocessing::SonarImagePreprocessing()
 SonarImagePreprocessing::~SonarImagePreprocessing() {
 }
 
+void SonarImagePreprocessing::ExtractROI(const SonarHolder& sonar_holder, cv::Mat& roi_cart, cv::Mat& roi_polar, uint32_t& roi_line, float alpha, int end_row) const {
+    uint32_t bin_count = sonar_holder.bin_count();
+    uint32_t beam_count = sonar_holder.beam_count();
+
+    cv::Mat mask = sonar_holder.cart_image_mask();
+    cv::Mat sonar_image = sonar_holder.cart_image();
+
+    if (end_row<0) end_row=sonar_image.rows;
+
+    // calculate the proportional mean of each image row
+    std::vector<float> row_mean(end_row, 0);
+    for (size_t i = 30; i <= end_row; i++) {
+        int r = sonar_image.rows-i-1;
+        double value = cv::sum(sonar_image.row(r))[0] / cv::countNonZero(mask.row(r));
+        row_mean[i] = std::isnan(value) ? 0 : value;
+    }
+
+    // accumulative sum
+    std::vector<float> accum_sum(row_mean.size(), 0);
+    std::partial_sum(row_mean.begin(), row_mean.end(), accum_sum.begin());
+
+    // threshold
+    float min = *std::min_element(accum_sum.begin(), accum_sum.end());
+    float max = *std::max_element(accum_sum.begin(), accum_sum.end());
+    float thresh = alpha * (max - min) + min;
+    std::replace_if(accum_sum.begin(), accum_sum.end(), std::bind2nd(std::less<float>(), thresh), 0.0);
+
+    // generate new cartesian mask
+    std::vector<float>::iterator pos = std::find_if (accum_sum.begin(), accum_sum.end(), std::bind2nd(std::greater<float>(), 0));
+    uint32_t new_y = std::distance(accum_sum.begin(), pos) + 1;
+    roi_line = mask.rows - new_y;
+    mask(cv::Rect(0, mask.rows - new_y, mask.cols, new_y)).setTo(cv::Scalar(0));
+    mask.copyTo(roi_cart);
+
+    // generate new polar mask
+    roi_polar = cv::Mat::ones(beam_count, bin_count, CV_8UC1) * 255;
+    roi_polar.row(beam_count-1).setTo(0);
+
+    for (size_t i = 0; i < roi_polar.rows; i++) {
+        for (size_t radius = 0; radius < roi_polar.cols; radius++) {
+            float y = sonar_holder.cart_center_point(radius, i).y;
+            if (y >= roi_line) roi_polar.at<uchar>(i, radius) = 0; else break;
+        }
+    }
+}
+
 void SonarImagePreprocessing::Apply(const SonarHolder& sonar_holder, cv::OutputArray preprocessed_image, cv::OutputArray result_mask, float scale_factor) const {
 
-    // get region of intereset mask
-    int sb = roi::cartesian::find_start_bin(sonar_holder);
-    cv::Mat raw_mask;
-    sonar_holder.load_roi_mask(sb, raw_mask);
+    cv::Mat roi_cart, roi_polar;
+    uint32_t roi_line;
+    ExtractROI(sonar_holder, roi_cart, roi_polar, roi_line, 0.05, sonar_holder.cart_size().height-1);
 
-    cv::Mat cart_mask;
-    sonar_holder.load_cartesian_image(raw_mask, cart_mask);
-    cart_mask.convertTo(cart_mask, CV_8U, 255.0);
+    cv::Mat raw_image8u;
+    sonar_holder.raw_image().convertTo(raw_image8u, CV_8U, 255);
 
-    int start_cart_line = (int)sonar_holder.cart_center_point(sb, sonar_holder.beam_count()/2).y;
-    Apply(sonar_holder.cart_image(), cart_mask, preprocessed_image, result_mask, scale_factor, start_cart_line);
+    cv::Mat roi_raw_image8u = cv::Mat::zeros(raw_image8u.size(), CV_8UC1);
+    raw_image8u.copyTo(roi_raw_image8u, roi_polar);
+
+    Apply(sonar_holder.cart_image(), roi_cart, preprocessed_image, result_mask, scale_factor, roi_line);
+
+    // // get region of intereset mask
+    // int sb = roi::cartesian::find_start_bin(sonar_holder);
+    // cv::Mat raw_mask;
+    // sonar_holder.load_roi_mask(sb, raw_mask);
+    //
+    // cv::Mat cart_mask;
+    // sonar_holder.load_cartesian_image(raw_mask, cart_mask);
+    // cart_mask.convertTo(cart_mask, CV_8U, 255.0);
+    //
+    // int start_cart_line = (int)sonar_holder.cart_center_point(sb, sonar_holder.beam_count()/2).y;
+    // Apply(sonar_holder.cart_image(), cart_mask, preprocessed_image, result_mask, scale_factor, start_cart_line);
 }
 
 void SonarImagePreprocessing::Apply(

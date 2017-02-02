@@ -2,6 +2,7 @@
 #define sonar_processing_SonarImagePreprocessing_hpp
 
 #include <iostream>
+#include <numeric>
 #include "sonar_processing/SonarHolder.hpp"
 
 namespace sonar_processing {
@@ -14,7 +15,10 @@ public:
 
     void Apply(const SonarHolder& sonar_holder, cv::OutputArray preprocessed_image, cv::OutputArray result_mask, float scale_factor=1.0) const;
 
-    void Apply(const cv::Mat& source_cart_image, const cv::Mat& source_cart_mask, cv::OutputArray preprocessed_image, cv::OutputArray result_mask, float scale_factor=1.0, int start_cart_line=0) const;
+    void Apply(const cv::Mat& source_cart_image, const cv::Mat& source_cart_mask, cv::OutputArray preprocessed_image, cv::OutputArray result_mask, float
+               scale_factor=1.0, int start_cart_line=0) const;
+
+    void ExtractROI(const SonarHolder& sonar_holder, cv::Mat& roi_cart, cv::Mat& roi_polar, uint32_t& roi_line, float alpha, int end_row=-1) const;
 
     void set_clahe_final_clip_limit(float clahe_final_clip_limit) {
         clahe_final_clip_limit_ = clahe_final_clip_limit;

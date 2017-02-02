@@ -465,21 +465,26 @@ void image_util::draw_contour_min_area_rect(const cv::Mat& src, cv::Mat &dst, st
     }
 }
 
-void image_util::create_min_area_rect_mask(std::vector<cv::Point> contour, cv::Mat &dst) {
-    if (!contour.empty()) {
-        cv::RotatedRect box = cv::minAreaRect(contour);
-        cv::Point2f rect_points[4];
-        box.points(rect_points);
-
-        std::vector<cv::Point> box_contour;
-        for (int i = 0; i < 4; i++) {
-            box_contour.push_back(rect_points[i]);
-        }
-
-        std::vector<std::vector<cv::Point> > box_contours;
-        box_contours.push_back(box_contour);
-        cv::drawContours(dst, box_contours, -1, cv::Scalar(255), CV_FILLED);
+void image_util::create_min_area_rect_mask(const std::vector<cv::Point>& contour, cv::Mat &dst) {
+    if (contour.empty()) {
+        return;
     }
+
+    create_rotated_rect_mask(cv::minAreaRect(contour), dst);
+}
+
+void image_util::create_rotated_rect_mask(const cv::RotatedRect& box, cv::Mat &dst) {
+    cv::Point2f rect_points[4];
+    box.points(rect_points);
+
+    std::vector<cv::Point> box_contour;
+    for (int i = 0; i < 4; i++) {
+        box_contour.push_back(rect_points[i]);
+    }
+
+    std::vector<std::vector<cv::Point> > box_contours;
+    box_contours.push_back(box_contour);
+    cv::drawContours(dst, box_contours, -1, cv::Scalar(255), CV_FILLED);
 }
 
 void image_util::draw_text(cv::Mat& dst, const std::string& text, cv::Point pos, cv::Scalar color) {

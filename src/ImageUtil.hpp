@@ -180,7 +180,9 @@ void find_contour(const cv::Mat& src, std::vector<std::vector<cv::Point> >& cont
 
 void draw_contour_min_area_rect(const cv::Mat& src, cv::Mat &dst, std::vector<cv::Point> contour);
 
-void create_min_area_rect_mask(std::vector<cv::Point> contour, cv::Mat &dst);
+void create_min_area_rect_mask(const std::vector<cv::Point>& contour, cv::Mat &dst);
+
+void create_rotated_rect_mask(const cv::RotatedRect& box, cv::Mat &dst);
 
 void draw_text(cv::Mat& dst, const std::string& text, cv::Point pos, cv::Scalar color);
 
