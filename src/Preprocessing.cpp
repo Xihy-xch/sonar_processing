@@ -1010,6 +1010,52 @@ void preprocessing::extract_roi_masks (const cv::Mat& sonar_image,
     }
 }
 
+cv::Mat preprocessing::extract_roi_mask ( const cv::Mat& sonar_image, cv::Mat mask,
+                                          const std::vector<float>& bearings,
+                                          uint32_t bin_count, uint32_t beam_count,
+                                          float alpha, bool cartesian) {
+
+    // calculate the proportional mean of each image row
+    std::vector<float> row_mean(sonar_image.rows, 0);
+    for (size_t i = 0; i < sonar_image.rows; i++) {
+        double value = cv::sum(sonar_image.row(i))[0] / cv::countNonZero(mask.row(i));
+        row_mean[sonar_image.rows - 1 - i] = std::isnan(value) ? 0 : value;
+    }
+
+    // accumulative sum
+    std::vector<float> accum_sum(row_mean.size());
+    std::partial_sum(row_mean.begin(), row_mean.end(), accum_sum.begin());
+
+    // threshold
+    float min = *std::min_element(accum_sum.begin(), accum_sum.end());
+    float max = *std::max_element(accum_sum.begin(), accum_sum.end());
+    float thresh = alpha * (max - min) + min;
+    std::replace_if(accum_sum.begin(), accum_sum.end(), std::bind2nd(std::less<float>(), thresh), 0.0);
+
+    std::vector<float>::iterator pos = std::find_if (accum_sum.begin(), accum_sum.end(), std::bind2nd(std::greater<float>(), 0));
+    uint32_t new_y = std::distance(accum_sum.begin(), pos) + 1;
+
+    // generate new cartesian mask
+    if (cartesian) {
+        mask.rowRange(mask.rows - new_y, mask.rows).setTo(cv::Scalar(0));
+    }
+
+    // generate new polar mask
+    else {
+        mask = cv::Mat::ones(beam_count, bin_count, CV_8UC1) * 255;
+        float scale_y = (float) sonar_image.rows / bin_count;
+
+        for (size_t i = 0; i < mask.rows; i++) {
+            for (size_t radius = 0; radius < mask.cols; radius++) {
+                float y = radius * scale_y * cos(bearings[i]);
+                if (y < new_y) mask.at<uchar>(i, radius) = 0;
+                else break;
+            }
+        }
+    }
+    return mask;
+}
+
 std::vector<cv::Point> preprocessing::find_biggest_contour(cv::InputArray src_arr) {
     cv::Mat src = src_arr.getMat();
     cv::Mat im_contours;
