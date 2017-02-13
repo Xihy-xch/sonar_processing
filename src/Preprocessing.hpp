@@ -124,6 +124,11 @@ void extract_roi_masks (const cv::Mat& cart_image,
                         cv::Mat& roi_cartesian, cv::Mat& roi_polar,
                         float alpha = 0.05);
 
+cv::Mat extract_roi_mask (const cv::Mat& sonar_image, cv::Mat mask,
+                          const std::vector<float>& bearings,
+                          uint32_t bin_count, uint32_t beam_count,
+                          float alpha, bool cartesian = true);
+
 std::vector<cv::Point> find_biggest_contour(cv::InputArray src_arr);
 
 } /* namespace preprocessing */
