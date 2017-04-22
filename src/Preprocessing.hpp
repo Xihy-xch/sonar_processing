@@ -49,7 +49,7 @@ cv::Rect calc_horiz_roi_old(cv::Mat src);
 
 cv::Rect calc_horiz_roi(cv::Mat src, float alpha = 0.2);
 
-void adaptative_clahe(cv::InputArray _src, cv::OutputArray _dst);
+void adaptive_clahe(cv::InputArray _src, cv::OutputArray _dst, unsigned int max_clip_limit = 20);
 
 double horiz_difference(cv::Mat src);
 
@@ -128,6 +128,9 @@ cv::Mat extract_roi_mask (const cv::Mat& sonar_image, cv::Mat mask,
                           const std::vector<float>& bearings,
                           uint32_t bin_count, uint32_t beam_count,
                           float alpha, bool cartesian = true);
+
+cv::Mat extract_cartesian_mask (const cv::Mat& sonar_image, const cv::Mat& mask,
+                        float alpha);
 
 std::vector<cv::Point> find_biggest_contour(cv::InputArray src_arr);
 
