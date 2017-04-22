@@ -1056,7 +1056,7 @@ cv::Mat preprocessing::extract_roi_mask ( const cv::Mat& sonar_image, cv::Mat ma
     return mask;
 }
 
-cv::Mat preprocessing::extract_cartesian_mask (   const cv::Mat& sonar_image, cv::Mat mask,
+cv::Mat preprocessing::extract_cartesian_mask2 (   const cv::Mat& sonar_image, cv::Mat mask,
                                                   float alpha) {
 
     // calculate the proportional mean of each image row
@@ -1093,6 +1093,55 @@ cv::Mat preprocessing::extract_cartesian_mask (   const cv::Mat& sonar_image, cv
     mask.rowRange(mask.rows - y_bottom, mask.rows).setTo(cv::Scalar(0));
 
     return mask;
+}
+
+cv::Mat preprocessing::extract_cartesian_mask (   const cv::Mat& sonar_image, const cv::Mat& mask,
+                                                  float alpha) {
+
+    // calculate the proportional mean of each image row
+    std::vector<float> row_mean(sonar_image.rows, 0);
+    for (size_t i = 0; i < sonar_image.rows; i++) {
+        double value = cv::sum(sonar_image.row(i))[0] / cv::countNonZero(mask.row(i));
+        row_mean[sonar_image.rows - 1 - i] = std::isnan(value) ? 0 : value;
+    }
+
+    // accumulative sum
+    std::vector<float> accum_sum_up(row_mean.size()), accum_sum_down(row_mean.size());
+    std::partial_sum(row_mean.begin(), row_mean.end(), accum_sum_up.begin());
+    std::partial_sum(row_mean.rbegin(), row_mean.rend(), accum_sum_down.begin());
+
+    // threshold
+    float min_up   = *std::min_element(accum_sum_up.begin(), accum_sum_up.end());
+    float max_up   = *std::max_element(accum_sum_up.begin(), accum_sum_up.end());
+    float min_down = *std::min_element(accum_sum_down.begin(), accum_sum_down.end());
+    float max_down = *std::max_element(accum_sum_down.begin(), accum_sum_down.end());
+
+    float thresh_up   = alpha * (max_up - min_up) + min_up;
+    float thresh_down = alpha * (max_down - min_down) + min_down;
+    std::replace_if(accum_sum_up.begin(), accum_sum_up.end(), std::bind2nd(std::less<float>(), thresh_up), 0);
+    std::replace_if(accum_sum_down.begin(), accum_sum_down.end(), std::bind2nd(std::less<float>(), thresh_down), 0);
+
+    // roi the mask (y axis)
+    std::vector<float>::iterator pos_up   = std::find_if (accum_sum_up.begin(), accum_sum_up.end(), std::bind2nd(std::greater<float>(), 0));
+    std::vector<float>::iterator pos_down = std::find_if (accum_sum_down.begin(), accum_sum_down.end(), std::bind2nd(std::greater<float>(), 0));
+
+    uint32_t y_bottom = std::distance(accum_sum_up.begin(), pos_up) + 1;
+    uint32_t y_top    = std::distance(accum_sum_down.begin(), pos_down) + 1;
+
+    cv::Mat dst = mask.clone();
+    dst.rowRange(0, y_top).setTo(0);
+    dst.rowRange(dst.rows - y_bottom, dst.rows).setTo(0);
+
+    // roi the mask (x axis)
+    cv::Mat mask_sum;
+    cv::reduce(dst / 255, mask_sum, 0, CV_REDUCE_SUM, CV_32S);
+    int max = *std::max_element(mask_sum.begin<int>(), mask_sum.end<int>());
+    for (size_t i = 0; i < mask_sum.cols; i++) {
+        if(mask_sum.at<int>(i) != max)
+            dst.col(i).setTo(0);
+    }
+
+    return dst;
 }
 
 std::vector<cv::Point> preprocessing::find_biggest_contour(cv::InputArray src_arr) {
