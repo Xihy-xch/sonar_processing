@@ -33,9 +33,10 @@ public:
 
     cv::Mat infinite_window(const cv::Mat& src);
     cv::Mat sliding_window(const cv::Mat& src);
-    cv::Mat adaptative_window(const cv::Mat& src);
+    cv::Mat adaptive_window(const cv::Mat& src);
     void setWindow_size(uint value) { window_size = value; };
     uint getWindow_size() { return window_size; };
+    uint getBuffer_size() { return frames.size(); };
 
 protected:
     cv::Mat rls_w, rls_p;

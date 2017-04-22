@@ -13,10 +13,10 @@ cv::Mat RLS::infinite_window(const cv::Mat& src) {
 
     // initialize coefficients
     if (rls_p.empty() || rls_w.empty() || src.size() != rls_p.size()) {
-        rls_p = cv::Mat::ones(src.size(), CV_32F) * 0.5;
-        rls_w = cv::Mat::zeros(src.size(), CV_32F);
-        frames.clear();
+        rls_p = cv::Mat::ones(src.size(), CV_32F);
+        src.copyTo(rls_w);
         src.copyTo(dst);
+        frames.clear();
     }
 
     // estimation of w parameters and its covariance p
@@ -70,14 +70,14 @@ cv::Mat RLS::sliding_window(const cv::Mat& src) {
     }
 
     // store current frame
-    frames.push_back(src.clone());
+    frames.push_back(src);
 
     // update coefficients
-    return infinite_window(src.clone());
+    return infinite_window(src);
 }
 
 // Recursive Least Square Filter algorithm with dynamic data window size
-cv::Mat RLS::adaptative_window(const cv::Mat& src) {
+cv::Mat RLS::adaptive_window(const cv::Mat& src) {
     CV_Assert(src.depth() == CV_32F);
 
     // if window size is higher than frame size, decrease 1x
@@ -102,7 +102,7 @@ cv::Mat RLS::adaptative_window(const cv::Mat& src) {
     }
 
     // run sliding window and update coefficients
-    cv::Mat dst = sliding_window(src.clone());
+    cv::Mat dst = sliding_window(src);
 
     // adaptative window size
     double mse_i = qs::MSE(src, dst);
