@@ -30,6 +30,23 @@ public:
         right_limit_ = base::Angle::Max();
     };
 
+    ScanningHolder( uint width,
+                    uint height,
+                    base::Angle left_limit,
+                    base::Angle right_limit)
+                    : transfer_()
+                    , accum_data_()
+                    , left_limit_(left_limit)
+                    , right_limit_(right_limit)
+                    , motor_step_(base::Angle::fromRad(0))
+                    , last_diff_step_(base::Angle::fromRad(0))
+                    , num_steps_(0)
+                    , last_sonar_()
+    {
+        cart_image_ = cv::Mat::zeros(width, height, CV_32F);
+        cart_mask_  = cv::Mat::zeros(width, height, CV_8U);
+    };
+
     ~ScanningHolder(){};
 
     /**
@@ -60,7 +77,13 @@ public:
         return cart_mask_;
     }
 
-    void addSonarData(const base::samples::Sonar& sonar);
+    /**
+     * Define the sonar scanning sector.
+     */
+    void setSectorScan(base::Angle left_limit, base::Angle right_limit) {
+        left_limit_ = left_limit;
+        right_limit_ = right_limit;
+    }
 
 private:
     /* the transfer vector between image pixels and sonar data */
