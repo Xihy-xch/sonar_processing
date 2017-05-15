@@ -91,7 +91,7 @@ void ScanningHolder::generateTransferTable(const base::samples::Sonar& sonar) {
 
             // pixels in the sonar image
             else {
-                cart_mask_.at<uchar>(i,j) = 255;
+                cart_mask_.at<uchar>(j,i) = 255;
                 int id_beam = round((num_steps_ - 1) * (angle + M_PI) / (2 * M_PI));
                 transfer_.push_back(id_beam * sonar.bin_count + radius);
             }
