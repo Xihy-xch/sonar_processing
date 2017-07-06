@@ -83,7 +83,7 @@ void ScanningHolder::generateTransferTable(const base::samples::Sonar& sonar) {
             point.y = point.y * (float) sonar.bin_count / (cart_image_.rows * 0.5);
 
             double radius = sqrt(point.x * point.x + point.y * point.y);
-            double angle = atan2(point.x, -point.y);
+            double angle = atan2(-point.x, -point.y);
 
             // pixels out the sonar image
             if(radius > sonar.bin_count || !radius || angle < left_limit_.rad || angle > right_limit_.rad)
