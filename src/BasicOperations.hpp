@@ -1,8 +1,8 @@
 #ifndef sonar_processing_BasicOperations_hpp
 #define sonar_processing_BasicOperations_hpp
 
-#include "sonar_processing/SonarHolder.hpp"
-#include "sonar_processing/PolarCartesianScanner.hpp"
+#include "SonarHolder.hpp"
+#include "PolarCartesianScanner.hpp"
 
 namespace sonar_processing {
 

@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <base/Angle.hpp>
-#include "sonar_processing/BasicOperations.hpp"
+#include "BasicOperations.hpp"
 
 namespace sonar_processing {
 

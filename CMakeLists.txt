@@ -1,26 +1,37 @@
 cmake_minimum_required (VERSION 2.8)
 project (sonar_processing)
 
-set (
-    ${PROJECT_NAME}_SOURCE_DIR
-    ${PROJECT_SOURCE_DIR}/src
-    CACHE PATH "Sonar Target Tracking Source Directory"
-    FORCE
+find_package ( Eigen3 REQUIRED )
+
+file ( GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp )
+file ( GLOB HEADERS ${PROJECT_SOURCE_DIR}/src/*.hpp )
+
+include_directories (
+    ${CMAKE_INSTALL_PREFIX}/include/
+    ${CMAKE_INSTALL_PREFIX}/include/sonar_toolkit
+    ${EIGEN3_INCLUDE_DIR}
 )
 
-set (
-    ${PROJECT_NAME}_INCLUDE_DIR
-    ${PROJECT_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}/include/${PROJECT_NAME}
-    CACHE PATH "Sonar Target Tracking Include Directory"
-    FORCE
+link_directories (
+    ${CMAKE_INSTALL_PREFIX}/lib/
+    ${CMAKE_INSTALL_PREFIX}/lib/sonar_toolkit
 )
 
-file ( GLOB ${PROJECT_NAME}_SOURCES PATH ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp )
+add_library (
+    sonar_processing STATIC
+    ${SOURCES}
+)
 
-set (
-    ${PROJECT_NAME}_SOURCES
-    ${${PROJECT_NAME}_SOURCES}
-    CACHE STRING "Sonar Target Tracking Source Files"
-    FORCE
+target_link_libraries (
+    sonar_processing
+)
+
+install(
+    FILES ${HEADERS}
+    DESTINATION include/sonar_toolkit/${PROJECT_NAME}
+)
+
+install(
+    TARGETS sonar_processing
+    DESTINATION lib/sonar_toolkit
 )

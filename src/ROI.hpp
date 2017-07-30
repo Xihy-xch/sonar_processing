@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include "sonar_processing/Utils.hpp"
-#include "sonar_processing/SonarHolder.hpp"
+#include "Utils.hpp"
+#include "SonarHolder.hpp"
 
 namespace sonar_processing {
 

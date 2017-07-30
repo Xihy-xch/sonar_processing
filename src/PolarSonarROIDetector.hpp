@@ -1,9 +1,9 @@
 #ifndef sonar_processing_PolarSonarROIDetector_hpp
 #define sonar_processing_PolarSonarROIDetector_hpp
 
-#include "sonar_processing/ROI.hpp"
-#include "sonar_processing/SonarHolder.hpp"
-#include "sonar_processing/BasicOperations.hpp"
+#include "ROI.hpp"
+#include "SonarHolder.hpp"
+#include "BasicOperations.hpp"
 
 namespace sonar_processing {
 

@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <numeric>
-#include "sonar_processing/SonarHolder.hpp"
+#include "SonarHolder.hpp"
 
 namespace sonar_processing {
 

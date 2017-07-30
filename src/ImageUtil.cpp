@@ -2,8 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <iterator>
-#include "sonar_processing/ImageUtil.hpp"
-#include "sonar_processing/Preprocessing.hpp"
+#include "ImageUtil.hpp"
+#include "Preprocessing.hpp"
 
 namespace sonar_processing {
 

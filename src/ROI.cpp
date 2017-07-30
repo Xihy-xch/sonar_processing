@@ -1,6 +1,6 @@
-#include "sonar_processing/ROI.hpp"
-#include "sonar_processing/PolarSonarROIDetector.hpp"
-#include "sonar_processing/CartesianSonarROIDetector.hpp"
+#include "ROI.hpp"
+#include "PolarSonarROIDetector.hpp"
+#include "CartesianSonarROIDetector.hpp"
 
 namespace sonar_processing {
 

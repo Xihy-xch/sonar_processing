@@ -1,0 +1,8 @@
+<package>
+    <description brief="sonar processing">
+        Sonar processing functions
+    </description>
+    <author>Gustavo Neves/gustavo.neves12@gmail.com</author>
+    <depend package="base/types" />
+    <depend package="sonar_toolkit/base" />
+</package>

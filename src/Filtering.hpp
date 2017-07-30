@@ -2,9 +2,9 @@
 #define sonar_processing_Filtering_hpp
 
 #include <vector>
-#include "sonar_processing/BasicOperations.hpp"
-#include "sonar_processing/ImageUtil.hpp"
-#include "sonar_processing/SonarHolder.hpp"
+#include "BasicOperations.hpp"
+#include "ImageUtil.hpp"
+#include "SonarHolder.hpp"
 
 namespace sonar_processing {
 

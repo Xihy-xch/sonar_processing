@@ -1,4 +1,4 @@
-#include "sonar_processing/Filtering.hpp"
+#include "Filtering.hpp"
 
 namespace sonar_processing {
 

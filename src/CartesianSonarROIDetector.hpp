@@ -1,8 +1,8 @@
 #ifndef CartesianSonarROIDetector_hpp
 #define CartesianSonarROIDetector_hpp
 
-#include "sonar_processing/ROI.hpp"
-#include "sonar_processing/SonarHolder.hpp"
+#include "ROI.hpp"
+#include "SonarHolder.hpp"
 
 namespace sonar_processing {
 

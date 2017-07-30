@@ -2,7 +2,7 @@
 #define sonar_processing_PolarCartesianScanner_hpp
 
 #include <stdio.h>
-#include "sonar_processing/ScannerBase.hpp"
+#include "ScannerBase.hpp"
 
 namespace sonar_processing {
 

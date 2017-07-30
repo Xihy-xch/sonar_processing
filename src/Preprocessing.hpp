@@ -132,8 +132,7 @@ cv::Mat extract_roi_mask (const cv::Mat& sonar_image, cv::Mat mask,
 cv::Mat extract_cartesian_mask (const cv::Mat& sonar_image, const cv::Mat& mask,
                         float alpha);
 
-cv::Mat extract_cartesian_mask2 (const cv::Mat& sonar_image, const cv::Mat& mask,
-                        float alpha);
+cv::Mat extract_cartesian_mask2(const cv::Mat& sonar_image, const cv::Mat& mask, float alpha);
 
 std::vector<cv::Point> find_biggest_contour(cv::InputArray src_arr);
 

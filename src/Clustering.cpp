@@ -1,4 +1,4 @@
-#include "sonar_processing/Clustering.hpp"
+#include "Clustering.hpp"
 
 namespace sonar_processing {
 

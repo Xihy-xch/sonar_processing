@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <algorithm>
-#include <base/Angle.hpp>
-#include "base/MathUtil.hpp"
+#include <base/MathUtil.hpp>
 #include "BasicOperations.hpp"
 #include "SonarHolder.hpp"
 

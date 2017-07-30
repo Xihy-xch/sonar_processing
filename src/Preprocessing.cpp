@@ -1,9 +1,9 @@
-#include "base/Plot.hpp"
-#include "sonar_util/Converter.hpp"
-#include "sonar_processing/Preprocessing.hpp"
-#include "sonar_processing/ImageUtil.hpp"
-#include "sonar_processing/Utils.hpp"
-#include "sonar_processing/third_party/spline.h"
+#include <sonar_util/Converter.hpp>
+#include "third_party/spline.h"
+#include "Preprocessing.hpp"
+#include "ImageUtil.hpp"
+#include "Utils.hpp"
+
 
 // C++ includes
 #include <numeric>
@@ -953,9 +953,9 @@ std::vector<std::vector<cv::Point> > preprocessing::find_target_contours(cv::Inp
     return find_contours(hi_mask);
 }
 
-cv::Mat preprocessing::get_sonar_mask( const std::vector<float>& bearings, uint32_t bin_count, uint32_t beam_count, uint32_t frame_width, uint32_t frame_height) {
+cv::Mat preprocessing::get_sonar_mask(const std::vector<float>& bearings, uint32_t bin_count, uint32_t beam_count, uint32_t frame_width, uint32_t frame_height) {
 
-    std::vector<int> beam_mapping = sonar_util::Converter::generate_beam_mapping_from_cartesian(std::vector<float>(), bearings, bin_count, beam_count, frame_width, frame_height);
+    std::vector<int> beam_mapping = sonar_util::Converter::generate_beam_mapping_from_cartesian(bearings, bin_count, beam_count, frame_width, frame_height);
     cv::Mat mask = cv::Mat::zeros(cv::Size(frame_width, frame_height), CV_8UC1);
 
     for (size_t i = 0; i < beam_mapping.size(); i++){
@@ -1056,8 +1056,7 @@ cv::Mat preprocessing::extract_roi_mask ( const cv::Mat& sonar_image, cv::Mat ma
     return mask;
 }
 
-cv::Mat preprocessing::extract_cartesian_mask2 (   const cv::Mat& sonar_image, cv::Mat mask,
-                                                  float alpha) {
+cv::Mat preprocessing::extract_cartesian_mask2(const cv::Mat& sonar_image, const cv::Mat& mask, float alpha) {
 
     // calculate the proportional mean of each image row
     std::vector<float> row_mean(sonar_image.rows, 0);

@@ -1,5 +1,5 @@
-#include "sonar_processing/SonarHolder.hpp"
-#include "sonar_processing/PolarCartesianScanner.hpp"
+#include "SonarHolder.hpp"
+#include "PolarCartesianScanner.hpp"
 
 namespace sonar_processing {
 

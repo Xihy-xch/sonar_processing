@@ -4,8 +4,8 @@
 #include <iostream>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include "sonar_processing/ImageUtil.hpp"
-#include "sonar_processing/ScannerBase.hpp"
+#include "ImageUtil.hpp"
+#include "ScannerBase.hpp"
 
 #define DEFAULT_NEIGHBORHOOD_SIZE       7
 #define DEFAULT_NEIGHBORHOOD_START_BIN  100

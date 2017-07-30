@@ -1,7 +1,7 @@
-#include "sonar_processing/ImageUtil.hpp"
-#include "sonar_processing/ShapeProcessing.hpp"
-#include "sonar_processing/Utils.hpp"
-#include "sonar_processing/ImageFiltering.hpp"
+#include "ImageUtil.hpp"
+#include "ShapeProcessing.hpp"
+#include "Utils.hpp"
+#include "ImageFiltering.hpp"
 
 namespace sonar_processing {
 

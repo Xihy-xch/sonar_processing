@@ -1,4 +1,4 @@
-#include "sonar_processing/Utils.hpp"
+#include "Utils.hpp"
 #include "PolarSonarROIDetector.hpp"
 
 namespace sonar_processing {

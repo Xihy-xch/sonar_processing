@@ -1,5 +1,4 @@
 #include <cstdio>
-#include "base/Plot.hpp"
 #include "CartesianSonarROIDetector.hpp"
 
 namespace sonar_processing {

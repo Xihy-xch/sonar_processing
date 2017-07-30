@@ -1,6 +1,5 @@
-#include "base/Plot.hpp"
-#include "sonar_processing/Denoising.hpp"
-#include "sonar_processing/QualityMetrics.hpp"
+#include "Denoising.hpp"
+#include "QualityMetrics.hpp"
 
 namespace sonar_processing {
 
