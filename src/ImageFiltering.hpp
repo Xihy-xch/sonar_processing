@@ -22,7 +22,7 @@ void mean_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, int ksize, cv:
 
 void meand_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, int ksize_inner, int ksize_outer, cv::InputArray mask_arr = cv::noArray());
 
-// void minimum_blob_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size min_size, int mode = CV_RETR_EXTERNAL, bool convex_hull = false);
+void insonification_correction(const cv::Mat& src, const cv::Mat& mask, cv::Mat& dst);
 
 } /* namespace image_filtering */
 

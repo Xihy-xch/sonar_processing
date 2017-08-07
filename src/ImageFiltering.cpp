@@ -239,19 +239,6 @@ void mean_difference_filter(cv::InputArray src_arr0, cv::InputArray src_arr1, cv
     dst.copyTo(dst_arr);
 }
 
-// void minimum_blob_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size min_size, int mode, bool convex_hull) {
-//     cv::Mat src = src_arr.getMat();
-//     dst_arr.create(src.size(), CV_8UC1);
-// 
-//     std::vector<std::vector<cv::Point> > contours = shape_processing::find_contours(src, min_size, mode, convex_hull);
-// 
-//     if (!contours.empty()) {
-//         cv::Mat dst = dst_arr.getMat();
-//         dst.setTo(0);
-//         cv::drawContours(dst, contours, -1, cv::Scalar(255), CV_FILLED);
-//     }
-// }
-
 void saliency_mapping(cv::InputArray src_arr, cv::OutputArray dst_arr, int block_count, cv::InputArray mask_arr) {
     CV_Assert(src_arr.type() == CV_32FC1);
 
@@ -304,6 +291,35 @@ void saliency_mapping(cv::InputArray src_arr, cv::OutputArray dst_arr, int block
 
     res /= cnt;
     res.copyTo(dst_arr);
+}
+
+void insonification_correction(const cv::Mat& src, const cv::Mat& mask, cv::Mat& dst)
+{
+    CV_Assert(mask.type() == CV_8U);
+
+    dst = src.clone();
+
+    // calculate the proportional mean of each image row
+    std::vector<double> row_mean(src.rows, 0);
+    for (size_t i = 0; i < src.rows; i++) {
+        unsigned int num_points = cv::countNonZero(mask.row(i));
+        if(num_points) {
+            double value = cv::sum(src.row(i))[0] / num_points;
+            row_mean[i] = std::isnan(value) ? 0 : value;
+        }
+    }
+
+    // get the maximum mean between lines
+    double max_mean = *std::max_element(row_mean.begin(), row_mean.end());
+
+    // apply the insonification correction
+    for (size_t i = 0; i < src.rows; i++) {
+        if(row_mean[i]) {
+            double factor = max_mean / row_mean[i];
+            dst.row(i) *= factor;
+        }
+    }
+    dst.setTo(1, dst > 1);
 }
 
 } /* namespace image_filtering */
