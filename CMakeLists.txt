@@ -18,7 +18,7 @@ link_directories (
 )
 
 add_library (
-    sonar_processing STATIC
+    sonar_processing SHARED
     ${SOURCES}
 )
 
