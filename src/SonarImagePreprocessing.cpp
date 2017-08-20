@@ -21,26 +21,21 @@ SonarImagePreprocessing::~SonarImagePreprocessing() {
 }
 
 void SonarImagePreprocessing::ExtractROI(
-    const SonarHolder& sonar_holder,
+    const cv::Mat& source_image,
+    const cv::Mat& source_mask,
     cv::Mat& roi_cart,
     uint32_t& roi_line,
     float alpha,
     int start_row,
     int end_row) const
 {
-    uint32_t bin_count = sonar_holder.bin_count();
-    uint32_t beam_count = sonar_holder.beam_count();
-
-    cv::Mat mask = sonar_holder.cart_image_mask();
-    cv::Mat sonar_image = sonar_holder.cart_image();
-
-    if (end_row<0) end_row=sonar_image.rows;
+    if (end_row<0) end_row=source_image.rows;
 
     // calculate the proportional mean of each image row
     std::vector<float> row_mean(end_row, 0);
     for (size_t i = start_row; i <= end_row; i++) {
-        int r = sonar_image.rows-i-1;
-        double value = cv::sum(sonar_image.row(r))[0] / cv::countNonZero(mask.row(r));
+        int r = source_image.rows-i-1;
+        double value = cv::sum(source_image.row(r))[0] / cv::countNonZero(source_mask.row(r));
         row_mean[i] = std::isnan(value) ? 0 : value;
     }
 
@@ -57,10 +52,11 @@ void SonarImagePreprocessing::ExtractROI(
     // generate new cartesian mask
     std::vector<float>::iterator pos = std::find_if (accum_sum.begin(), accum_sum.end(), std::bind2nd(std::greater<float>(), 0));
     uint32_t new_y = std::distance(accum_sum.begin(), pos) + 1;
-    roi_line = mask.rows - new_y;
-    mask(cv::Rect(0, mask.rows - new_y, mask.cols, new_y)).setTo(cv::Scalar(0));
-    mask.copyTo(roi_cart);
+    roi_line = source_mask.rows-new_y;
+    source_mask(cv::Rect(0, source_mask.rows - new_y, source_mask.cols, new_y)).setTo(cv::Scalar(0));
+    source_mask.copyTo(roi_cart);
 }
+
 
 void SonarImagePreprocessing::Apply(
     const SonarHolder& sonar_holder,
@@ -68,13 +64,28 @@ void SonarImagePreprocessing::Apply(
     cv::Mat& result_mask,
     float scale_factor) const
 {
-    cv::Mat roi_cart;
-    uint32_t roi_line;
-    ExtractROI(sonar_holder, roi_cart, roi_line, 0.005, 30, sonar_holder.cart_size().height-1);
-    Apply(sonar_holder.cart_image(), roi_cart, preprocessed_image, result_mask, scale_factor, roi_line);
+    Apply(
+        sonar_holder.cart_image(),
+        sonar_holder.cart_image_mask(),
+        preprocessed_image,
+        result_mask,
+        scale_factor);
 }
 
 void SonarImagePreprocessing::Apply(
+    const cv::Mat& source_image,
+    const cv::Mat& source_mask,
+    cv::Mat& preprocessed_image,
+    cv::Mat& result_mask,
+    float scale_factor) const
+{
+    cv::Mat roi_cart;
+    uint32_t roi_line;
+    ExtractROI(source_image, source_mask, roi_cart, roi_line, 0.005, 30, source_image.rows-1);
+    PerformPreprocessing(source_image, roi_cart, preprocessed_image, result_mask, scale_factor, roi_line);
+}
+
+void SonarImagePreprocessing::PerformPreprocessing(
     const cv::Mat& source_cart_image,
     const cv::Mat& source_cart_mask,
     cv::Mat& preprocessed_image,
@@ -110,6 +121,7 @@ void SonarImagePreprocessing::Apply(
 
     // reduce mask size
     image_util::erode(cart_mask, cart_mask, cv::Size(15, 15), 2);
+    cv::threshold(cart_mask, cart_mask, 128, 255, CV_THRESH_BINARY);
 
     // apply cartesian mask
     image_util::apply_mask(border, border, cart_mask);

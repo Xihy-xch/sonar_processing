@@ -24,7 +24,7 @@ void saliency_gray(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArr
     }
 
     cv::Mat sm = cv::Mat::zeros(src.size(), CV_32FC1);
-    
+
     cv::Mat integral;
     cv::integral(src, integral, CV_32F);
 
@@ -55,7 +55,7 @@ void saliency_gray(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArr
             sm.at<float>(y, x) = cv_sum;
         }
     }
-    
+
     sm.copyTo(dst_arr);
 }
 
@@ -95,9 +95,9 @@ void saliency_color(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputAr
             float l_val = L.at<float>(y, x);
             float a_val = A.at<float>(y, x);
             float b_val = B.at<float>(y, x);
-            
+
             float cv_sum = 0;
-        
+
             for (int k = 0; k < N.size(); k++) {
                 int y1 = std::max(0, y-N[k]);
                 int y2 = std::min(y+N[k], height-1);
@@ -179,7 +179,7 @@ void integral_mean_filter(cv::InputArray integral_arr, cv::OutputArray dst_arr, 
             dst.at<float>(y, x) = image_util::integral_image_sum<float>(integral, r) / (float)r.area();
         }
     }
-    
+
     dst.copyTo(dst_arr);
 }
 
@@ -214,7 +214,7 @@ void mean_difference_filter(cv::InputArray src_arr0, cv::InputArray src_arr1, cv
 
     cv::Mat integral;
     cv::integral(src_arr0, integral, CV_32F);
-    
+
     int w = src_arr0.size().width;
     int h = src_arr0.size().height;
 
@@ -235,7 +235,7 @@ void mean_difference_filter(cv::InputArray src_arr0, cv::InputArray src_arr1, cv
             dst.at<float>(y, x) = (d < 0) ? 0 : ((d > 1) ? 1 : d);
         }
     }
-    
+
     dst.copyTo(dst_arr);
 }
 
@@ -254,19 +254,19 @@ void saliency_mapping(cv::InputArray src_arr, cv::OutputArray dst_arr, int block
     cv::Mat res = cv::Mat::zeros(src.size(), CV_32FC1);
     cv::Mat cnt = cv::Mat::zeros(src.size(), CV_32FC1);
     cv::Mat mask = mask_arr.getMat();
-    
+
     cv::Mat mask_32f;
     mask.convertTo(mask_32f, CV_32F, 1.0/255.0);
 
     cv::Mat integral;
     cv::integral(src, integral, CV_32F);
-        
+
     int number_of_rows=(height-block_height)/(block_height/2)+1;
     int number_of_cols=(width-block_width)/(block_width/2)+1;
 
     int total_blocks = number_of_rows*number_of_cols;
 
-    std::vector<cv::Rect> rects(total_blocks); 
+    std::vector<cv::Rect> rects(total_blocks);
     std::vector<float> means(total_blocks);
 
     int idx = 0;

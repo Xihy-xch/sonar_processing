@@ -20,20 +20,11 @@ public:
         float scale_factor=1.0) const;
 
     void Apply(
-        const cv::Mat& source_cart_image,
-        const cv::Mat& source_cart_mask,
+        const cv::Mat& source_image,
+        const cv::Mat& source_mask,
         cv::Mat& preprocessed_image,
         cv::Mat& result_mask,
-        float scale_factor=1.0,
-        int start_cart_line=0) const;
-
-    void ExtractROI(
-        const SonarHolder& sonar_holder,
-        cv::Mat& roi_cart,
-        uint32_t& roi_line,
-        float alpha,
-        int start_row=0,
-        int end_row=-1) const;
+        float scale_factor=1.0) const;
 
     void set_mean_filter_ksize(int mean_filter_ksize) {
         mean_filter_ksize_ = mean_filter_ksize;
@@ -60,6 +51,23 @@ public:
     }
 
 private:
+
+    void PerformPreprocessing(
+        const cv::Mat& source_cart_image,
+        const cv::Mat& source_cart_mask,
+        cv::Mat& preprocessed_image,
+        cv::Mat& result_mask,
+        float scale_factor=1.0,
+        int start_cart_line=0) const;
+
+    void ExtractROI(
+        const cv::Mat& source_image,
+        const cv::Mat& source_mask,
+        cv::Mat& roi_cart,
+        uint32_t& roi_line,
+        float alpha,
+        int start_row=0,
+        int end_row=-1) const;
 
     // denoising mean filter kernel size
     int mean_filter_ksize_;

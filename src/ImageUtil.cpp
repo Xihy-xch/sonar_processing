@@ -177,7 +177,7 @@ double image_util::otsu_thresh_8u(const cv::Mat& _src, cv::InputArray mask_arr)
 
     const int N = 256;
     int i, j, s, h[N] = {0};
-    
+
     if (mask_arr.empty()) {
         s = size.width*size.height;
         for( i = 0; i < size.height; i++ ) {
@@ -190,7 +190,7 @@ double image_util::otsu_thresh_8u(const cv::Mat& _src, cv::InputArray mask_arr)
     else {
         cv::Mat _mask = mask_arr.getMat();
         CV_Assert(_mask.type() == CV_8UC1);
-        
+
         s = 0;
 
         for( i = 0; i < size.height; i++ ) {
@@ -378,7 +378,7 @@ void image_util::horizontal_normalize(cv::InputArray src_arr, cv::OutputArray ds
     int h = src_arr.size().height;
     int h_offset = h-padding;
     int ksize_h = h_offset/2;
-    
+
     cv::Mat src = src_arr.getMat();
     cv::Mat mask = mask_arr.getMat();
     cv::Mat dst = cv::Mat::zeros(src_arr.size(), src_arr.type());
@@ -487,6 +487,10 @@ void image_util::create_rotated_rect_mask(const cv::RotatedRect& box, cv::Mat &d
     cv::drawContours(dst, box_contours, -1, cv::Scalar(255), CV_FILLED);
 }
 
+void image_util::create_rotated_rect_mask(const std::vector<cv::RotatedRect>& list, cv::Mat& dst) {
+    for (size_t i = 0; i < list.size(); i++) create_rotated_rect_mask(list[i], dst);
+}
+
 void image_util::draw_text(cv::Mat& dst, const std::string& text, cv::Point pos, cv::Scalar color) {
     int baseline = 0;
     double font_scale = 1.5;
@@ -496,5 +500,72 @@ void image_util::draw_text(cv::Mat& dst, const std::string& text, cv::Point pos,
     cv::Point textOrg = cv::Point(pos.x, pos.y-text_size.height);
     cv::putText(dst, text, textOrg, font_face, font_scale, color, thickness);
 }
+
+void image_util::build_locations_masks(
+    const std::vector<cv::Rect>& locations,
+    cv::Size input_size,
+    cv::Size output_size,
+    cv::Point offset,
+    float scale_factor,
+    float rotated_angle,
+    std::vector<cv::Mat>& masks,
+    std::vector<cv::RotatedRect>& boxs)
+{
+    if (!locations.empty()) {
+        cv::Point center = cv::Point(input_size.width/2, input_size.height/2);
+        std::vector<cv::Rect>::const_iterator it;
+        for(it = locations.begin(); it != locations.end(); ++it ) {
+            cv::Mat mask = cv::Mat::zeros(input_size, CV_8UC1);
+            cv::Rect rc;
+            rc.x = (*it).x/scale_factor+offset.x/scale_factor;
+            rc.y = (*it).y/scale_factor+offset.y/scale_factor;
+            rc.width = (*it).width/scale_factor;
+            rc.height = (*it).height/scale_factor;
+
+            cv::rectangle(mask, rc, cv::Scalar(255), CV_FILLED);
+            image_util::rotate(mask, mask, -rotated_angle, center, output_size);
+
+            std::vector<cv::Point> contours = preprocessing::find_biggest_contour(mask);
+            cv::RotatedRect box = cv::minAreaRect(contours);
+
+            boxs.push_back(box);
+            masks.push_back(mask);
+        }
+    }
+}
+
+void image_util::draw_locations(
+    const cv::Mat& src,
+    const std::vector<cv::RotatedRect>& loc_boxs,
+    cv::Mat& dst)
+{
+    if (!loc_boxs.empty()) {
+        cv::cvtColor(src, dst, CV_GRAY2BGR);
+        std::vector<cv::RotatedRect>::const_iterator it = loc_boxs.begin();
+        for(; it != loc_boxs.end(); ++it ) {
+            // get annotation rotated rect
+            image_util::draw_rotated_rect(dst, cv::Scalar(0, 255, 0), *it);
+            cv::circle(dst, (*it).center, 10, cv::Scalar(0, 255, 0), CV_FILLED);
+        }
+    }
+}
+
+void image_util::draw_rects(
+    const cv::Mat& src,
+    const std::vector<cv::Rect>& rects,
+    cv::Mat& dst)
+{
+    if (!rects.empty()){
+        CV_Assert(src.channels() == 1);
+        cv::cvtColor(src, dst, CV_GRAY2BGR);
+        for (size_t i=0; i<rects.size();i++) {
+            cv::rectangle(dst, rects[i], cv::Scalar(0, 0, 255));
+        }
+    }
+}
+
+
+
+
 
 } /* sonar_processing image_util */

@@ -30,12 +30,11 @@ SonarHolder::SonarHolder(
     : cart_size_(0, 0)
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
-    , interpolation_type_(interpolation_type)
     , neighborhood_size_(-1)
     , neighborhood_table_bin_count_(-1)
     , neighborhood_table_beam_count_(-1)
 {
-    Reset(bins, start_beam, beam_width, bin_count, beam_count);
+    Reset(bins, start_beam, beam_width, bin_count, beam_count, interpolation_type);
 }
 
 SonarHolder::SonarHolder(
@@ -48,9 +47,8 @@ SonarHolder::SonarHolder(
     : cart_size_(0, 0)
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
-    , interpolation_type_(interpolation_type)
 {
-    Reset(bins, bearings, beam_width, bin_count, beam_count);
+    Reset(bins, bearings, beam_width, bin_count, beam_count, interpolation_type);
 }
 
 SonarHolder::~SonarHolder() {
@@ -61,7 +59,8 @@ void SonarHolder::Reset(
     std::vector<float> bearings,
     float beam_width,
     uint32_t bin_count,
-    uint32_t beam_count)
+    uint32_t beam_count,
+    int interpolation_type)
 {
     bool is_initialize = (bin_count == bin_count_ && beam_count == beam_count_);
 
@@ -70,6 +69,7 @@ void SonarHolder::Reset(
     bin_count_ = bin_count;
     beam_count_ = beam_count;
     beam_width_ = beam_width;
+    interpolation_type_ = interpolation_type;
 
     raw_image_ = cv::Mat(bins_).reshape(1, beam_count_);
 
@@ -83,9 +83,10 @@ void SonarHolder::Reset(
     float start_beam,
     float beam_width,
     uint32_t bin_count,
-    uint32_t beam_count)
+    uint32_t beam_count,
+    int interpolation_type)
 {
-    Reset(bins, BuildBeamBearings(start_beam, beam_width, beam_count), beam_width, bin_count, beam_count);
+    Reset(bins, BuildBeamBearings(start_beam, beam_width, beam_count), beam_width, bin_count, beam_count, interpolation_type);
 }
 void SonarHolder::ResetBins(const std::vector<float>& bins){
     Reset(bins, bearings_, beam_width_, bin_count_, beam_count_);

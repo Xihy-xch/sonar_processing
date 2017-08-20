@@ -4,5 +4,6 @@
     </description>
     <author>Gustavo Neves/gustavo.neves12@gmail.com</author>
     <depend package="base/types" />
+    <depend package="sonar_toolkit/rock_util" />
     <depend package="sonar_toolkit/base" />
 </package>

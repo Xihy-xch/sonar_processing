@@ -43,13 +43,15 @@ public:
                std::vector<float> bearings,
                float beam_width,
                uint32_t bin_count,
-               uint32_t beam_count);
+               uint32_t beam_count,
+               int interpolation_type = WEIGHTED);
 
     void Reset(std::vector<float> bins,
                float start_beam,
                float beam_width,
                uint32_t bin_count,
-               uint32_t beam_count);
+               uint32_t beam_count,
+               int interpolation_type = WEIGHTED);
 
     void ResetBins(const std::vector<float>& bins);
 

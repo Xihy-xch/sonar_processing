@@ -65,7 +65,7 @@ inline void show_image(const std::string& title, cv::InputArray src, int scale=1
         return;
     }
 
-    cv::Mat scaled; 
+    cv::Mat scaled;
     cv::resize(src, scaled, cv::Size(src.size().width/scale, src.size().height/scale));
     cv::imshow(title, scaled);
 }
@@ -184,7 +184,30 @@ void create_min_area_rect_mask(const std::vector<cv::Point>& contour, cv::Mat &d
 
 void create_rotated_rect_mask(const cv::RotatedRect& box, cv::Mat &dst);
 
+void create_rotated_rect_mask(const std::vector<cv::RotatedRect>& list, cv::Mat& dst);
+
 void draw_text(cv::Mat& dst, const std::string& text, cv::Point pos, cv::Scalar color);
+
+void build_locations_masks(
+    const std::vector<cv::Rect>& locations,
+    cv::Size input_size,
+    cv::Size output_size,
+    cv::Point offset,
+    float scale_factor,
+    float rotated_angle,
+    std::vector<cv::Mat>& masks,
+    std::vector<cv::RotatedRect>& boxs);
+
+void draw_locations(
+    const cv::Mat& src,
+    const std::vector<cv::RotatedRect>& loc_boxs,
+    cv::Mat& dst);
+
+void draw_rects(
+    const cv::Mat& src,
+    const std::vector<cv::Rect>& rects,
+    cv::Mat& dst);
+
 
 } /* namespace image_util */
 

@@ -13,7 +13,7 @@ namespace sonar_processing {
 namespace utils {
 
 inline cv::Rect clip_rect(const cv::Point& tl, const cv::Point& br, const cv::Point& min_tl, const cv::Point& max_br) {
-    return cv::Rect(cv::Point(std::max(min_tl.x, tl.x), std::max(min_tl.y, tl.y)), 
+    return cv::Rect(cv::Point(std::max(min_tl.x, tl.x), std::max(min_tl.y, tl.y)),
                     cv::Point(std::min(br.x, max_br.x), std::min(br.y, max_br.y)));
 }
 
@@ -64,7 +64,7 @@ inline static uint64_t microseconds() {
 }
 
 inline static uint64_t milliseconds() {
-    return microseconds() / 1000;    
+    return microseconds() / 1000;
 }
 
 inline static std::string millisecs_str() {
