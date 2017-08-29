@@ -11,9 +11,9 @@
 namespace sonar_processing {
 
 SonarImagePreprocessing::SonarImagePreprocessing()
-    : mean_filter_ksize_(7)
-    , mean_difference_filter_ksize_(25)
-    , median_blur_filter_ksize_(5)
+    : mean_filter_ksize_(5)
+    , mean_difference_filter_ksize_(15)
+    , median_blur_filter_ksize_(3)
 {
 }
 
@@ -120,7 +120,7 @@ void SonarImagePreprocessing::PerformPreprocessing(
     image_filtering::border_filter(denoised_8u, border);
 
     // reduce mask size
-    image_util::erode(cart_mask, cart_mask, cv::Size(15, 15), 2);
+    image_util::erode(cart_mask, cart_mask, cv::Size(15, 15), 1);
     cv::threshold(cart_mask, cart_mask, 128, 255, CV_THRESH_BINARY);
 
     // apply cartesian mask

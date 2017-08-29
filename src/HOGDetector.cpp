@@ -11,6 +11,7 @@ HOGDetector::HOGDetector()
     : window_size_(192, 48)
     , training_scale_factor_(0.3)
     , show_descriptor_(false)
+    , show_positive_window_(false)
 {
 
 }
@@ -245,6 +246,12 @@ void HOGDetector::ComputePositive(
 {
     cv::Mat input_image;
     PreparePositiveInput(source_image, annotation_mask, input_image);
+
+    if (show_positive_window_) {
+        image_util::show_scale("positive_input_image", input_image, 1.5);
+        cv::waitKey(15);
+    }
+
     ComputeGradient(input_image, gradient_list_positive);
 }
 

@@ -34,6 +34,10 @@ public:
         training_scale_factor_ = training_scale_factor;
     }
 
+    void set_show_positive_window(bool show_positive_window) {
+        show_positive_window_ = show_positive_window;
+    }
+
     void LoadSVMTrain(const std::string& svm_model_filename);
 
     bool Detect(
@@ -145,6 +149,7 @@ private:
 
     double training_scale_factor_;
     bool show_descriptor_;
+    bool show_positive_window_;
 
     cv::HOGDescriptor hog_descriptor_;
     cv::Mat sonar_source_image_;
