@@ -1,7 +1,6 @@
 #include "Clustering.hpp"
 #include "Denoising.hpp"
 #include "FrequencyDomain.hpp"
-#include "ImageFiltering.hpp"
 #include "ImageUtil.hpp"
 #include "Preprocessing.hpp"
 #include "ROI.hpp"
@@ -12,8 +11,13 @@ namespace sonar_processing {
 
 SonarImagePreprocessing::SonarImagePreprocessing()
     : mean_filter_ksize_(5)
-    , mean_difference_filter_ksize_(15)
+    , mean_difference_filter_ksize_(50)
     , median_blur_filter_ksize_(3)
+    , roi_extract_thresh_(0.05)
+    , roi_extract_start_bin_(30)
+    , mean_difference_filter_enable_(true)
+    , border_filter_enable_(true)
+    , mean_difference_filter_source_(kEnhanced)
 {
 }
 
@@ -53,10 +57,9 @@ void SonarImagePreprocessing::ExtractROI(
     std::vector<float>::iterator pos = std::find_if (accum_sum.begin(), accum_sum.end(), std::bind2nd(std::greater<float>(), 0));
     uint32_t new_y = std::distance(accum_sum.begin(), pos) + 1;
     roi_line = source_mask.rows-new_y;
-    source_mask(cv::Rect(0, source_mask.rows - new_y, source_mask.cols, new_y)).setTo(cv::Scalar(0));
     source_mask.copyTo(roi_cart);
+    roi_cart(cv::Rect(0, source_mask.rows - new_y, source_mask.cols, new_y)).setTo(cv::Scalar(0));
 }
-
 
 void SonarImagePreprocessing::Apply(
     const SonarHolder& sonar_holder,
@@ -81,8 +84,23 @@ void SonarImagePreprocessing::Apply(
 {
     cv::Mat roi_cart;
     uint32_t roi_line;
-    ExtractROI(source_image, source_mask, roi_cart, roi_line, 0.005, 30, source_image.rows-1);
-    PerformPreprocessing(source_image, roi_cart, preprocessed_image, result_mask, scale_factor, roi_line);
+
+    ExtractROI(
+        source_image,
+        source_mask,
+        roi_cart,
+        roi_line,
+        roi_extract_thresh_,
+        roi_extract_start_bin_,
+        source_image.rows-1);
+
+    PerformPreprocessing(
+        source_image,
+        roi_cart,
+        preprocessed_image,
+        result_mask,
+        scale_factor,
+        roi_line);
 }
 
 void SonarImagePreprocessing::PerformPreprocessing(
@@ -103,6 +121,8 @@ void SonarImagePreprocessing::PerformPreprocessing(
         cv::resize(cart_mask, cart_mask, new_size);
     }
 
+    cv::Mat result_image;
+
     cv::Mat cart_image_8u;
     cart_image.convertTo(cart_image_8u, CV_8U, 255);
 
@@ -114,31 +134,46 @@ void SonarImagePreprocessing::PerformPreprocessing(
     cv::Mat denoised;
     image_filtering::mean_filter(enhanced, denoised, mean_filter_ksize_, cart_mask);
 
-    // apply border filter
-    cv::Mat border, denoised_8u;
-    denoised.convertTo(denoised_8u, CV_8U, 255.0);
-    image_filtering::border_filter(denoised_8u, border);
+    if (border_filter_enable_) {
+        // apply border filter
+        cv::Mat border, denoised_8u;
+        denoised.convertTo(denoised_8u, CV_8U, 255);
+        image_filtering::border_filter(denoised_8u, border, cart_mask, border_filter_type_);
 
-    // reduce mask size
-    image_util::erode(cart_mask, cart_mask, cv::Size(15, 15), 1);
-    cv::threshold(cart_mask, cart_mask, 128, 255, CV_THRESH_BINARY);
+        // reduce mask size
+        cv::Size ksize = (mean_filter_ksize_ > 5) ? cv::Size(13, 13) : cv::Size(9, 9);
+        image_util::erode(cart_mask, cart_mask, ksize, 1);
+        cv::threshold(cart_mask, cart_mask, 128, 255, CV_THRESH_BINARY);
 
-    // apply cartesian mask
-    image_util::apply_mask(border, border, cart_mask);
-    border.convertTo(border, CV_32F, 1.0/255.0);
-    cv::normalize(border, border, 0, 1, cv::NORM_MINMAX, CV_32FC1, cart_mask);
+        // apply cartesian mask
+        image_util::apply_mask(border, border, cart_mask);
+        border.convertTo(border, CV_32F, 1.0/255.0);
+        cv::normalize(border, border, 0, 1, cv::NORM_MINMAX, CV_32FC1, cart_mask);
 
-    // mean difference filter
-    cv::Mat mean_diff;
-    image_filtering::mean_difference_filter(enhanced, border, mean_diff, mean_difference_filter_ksize_, cart_mask);
+        // mean difference filter
+        if (mean_difference_filter_enable_) {
+            if (mean_difference_filter_source_ == kBorder) {
+                image_filtering::mean_difference_filter(border, border, result_image, mean_difference_filter_ksize_, cart_mask);
+            }
+            else {
+                image_filtering::mean_difference_filter(enhanced, border, result_image, mean_difference_filter_ksize_, cart_mask);
+            }
+        }
+        else {
+            border.copyTo(result_image);
+        }
+    }
+    else {
+        enhanced.copyTo(result_image);
+    }
 
     // apply median filter
-    mean_diff.convertTo(mean_diff, CV_8U, 255.0);
-    cv::medianBlur(mean_diff, mean_diff, median_blur_filter_ksize_);
-    mean_diff.convertTo(mean_diff, CV_32F, 1.0/255.0);
+    result_image.convertTo(result_image, CV_8U, 255.0);
+    cv::medianBlur(result_image, result_image, median_blur_filter_ksize_);
+    result_image.convertTo(result_image, CV_32F, 1.0/255.0);
 
-    preprocessed_image = cv::Mat::zeros(mean_diff.size(), mean_diff.type());
-    cv::normalize(mean_diff, preprocessed_image, 0, 1, cv::NORM_MINMAX, CV_32FC1, cart_mask);
+    preprocessed_image = cv::Mat::zeros(result_image.size(), result_image.type());
+    cv::normalize(result_image, preprocessed_image, 0, 1, cv::NORM_MINMAX, CV_32FC1, cart_mask);
 
     cart_mask.copyTo(result_mask);
 

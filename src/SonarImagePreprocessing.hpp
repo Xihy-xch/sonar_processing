@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <numeric>
+#include "ImageFiltering.hpp"
 #include "SonarHolder.hpp"
 
 namespace sonar_processing {
@@ -10,6 +11,12 @@ namespace sonar_processing {
 class SonarImagePreprocessing {
 
 public:
+
+    enum MeanDifferenceFilterSource {
+        kBorder = 0,
+        kEnhanced = 1
+    };
+
     SonarImagePreprocessing();
     ~SonarImagePreprocessing();
 
@@ -38,6 +45,14 @@ public:
         mean_difference_filter_ksize_ = mean_difference_filter_ksize;
     }
 
+    void set_mean_difference_filter_enable(bool mean_difference_filter_enable) {
+        mean_difference_filter_enable_ = mean_difference_filter_enable;
+    }
+
+    bool mean_difference_filter_enable() const {
+        return mean_difference_filter_enable_;
+    }
+
     int mean_difference_filter_ksize() const {
         return mean_difference_filter_ksize_;
     }
@@ -48,6 +63,46 @@ public:
 
     int median_blur_filter_ksize() const {
         return median_blur_filter_ksize_;
+    }
+
+    void set_roi_extract_thresh(double roi_extract_thresh) {
+        roi_extract_thresh_ = roi_extract_thresh;
+    }
+
+    double roi_extract_thresh() const {
+        return roi_extract_thresh_;
+    }
+
+    void set_roi_extract_start_bin(int roi_extract_start_bin) {
+        roi_extract_start_bin_ = roi_extract_start_bin;
+    }
+
+    int roi_extract_start_bin() const {
+        return roi_extract_start_bin_;
+    }
+
+    void set_border_filter_type(image_filtering::BorderFilterType border_filter_type) {
+        border_filter_type_ = border_filter_type;
+    }
+
+    image_filtering::BorderFilterType border_filter_type() const {
+        return border_filter_type_;
+    }
+
+    void set_border_filter_enable(bool border_filter_enable){
+        border_filter_enable_ = border_filter_enable;
+    }
+
+    bool border_filter_enable() const {
+        return border_filter_enable_;
+    }
+
+    void set_mean_difference_filter_source(MeanDifferenceFilterSource mean_difference_filter_source) {
+        mean_difference_filter_source_ = mean_difference_filter_source;
+    }
+
+    MeanDifferenceFilterSource mean_difference_filter_source() const {
+        return mean_difference_filter_source_;
     }
 
 private:
@@ -77,6 +132,23 @@ private:
 
     // median blur filter kernel size;
     int median_blur_filter_ksize_;
+
+    // the roi extract threshold
+    double roi_extract_thresh_;
+
+    /// the roi extract start bin
+    int roi_extract_start_bin_;
+
+    // enable / disable mean difference filter
+    bool mean_difference_filter_enable_;
+
+    // the border filter type
+    image_filtering::BorderFilterType border_filter_type_;
+
+    // enable / disable border filter
+    bool border_filter_enable_;
+
+    MeanDifferenceFilterSource mean_difference_filter_source_;
 
 };
 

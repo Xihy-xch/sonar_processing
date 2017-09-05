@@ -38,6 +38,20 @@ public:
         show_positive_window_ = show_positive_window;
     }
 
+
+
+    void set_sonar_image_processing(const SonarImagePreprocessing& p) {
+        sonar_image_processing_.set_roi_extract_thresh(p.roi_extract_thresh());
+        sonar_image_processing_.set_roi_extract_start_bin(p.roi_extract_start_bin());
+        sonar_image_processing_.set_mean_filter_ksize(p.mean_filter_ksize());
+        sonar_image_processing_.set_mean_difference_filter_enable(p.mean_difference_filter_enable());
+        sonar_image_processing_.set_mean_difference_filter_ksize(p.mean_difference_filter_ksize());
+        sonar_image_processing_.set_mean_difference_filter_source(p.mean_difference_filter_source());
+        sonar_image_processing_.set_median_blur_filter_ksize(p.median_blur_filter_ksize());
+        sonar_image_processing_.set_border_filter_type(p.border_filter_type());
+        sonar_image_processing_.set_border_filter_enable(p.border_filter_enable());
+    }
+
     void LoadSVMTrain(const std::string& svm_model_filename);
 
     bool Detect(
