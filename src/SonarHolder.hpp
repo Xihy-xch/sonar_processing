@@ -28,14 +28,16 @@ public:
                 float beam_width,
                 uint32_t bin_count,
                 uint32_t beam_count,
-                int interpolation_type = WEIGHTED);
+                cv::Size cart_size = cv::Size(-1, -1),
+                int interpolation_type = LINEAR);
 
     SonarHolder(std::vector<float> bins,
                 std::vector<float> bearings,
                 float beam_width,
                 uint32_t bin_count,
                 uint32_t beam_count,
-                int interpolation_type = WEIGHTED);
+                cv::Size cart_size = cv::Size(-1, -1),
+                int interpolation_type = LINEAR);
 
     ~SonarHolder();
 
@@ -44,14 +46,16 @@ public:
                float beam_width,
                uint32_t bin_count,
                uint32_t beam_count,
-               int interpolation_type = WEIGHTED);
+               cv::Size cart_size = cv::Size(-1, -1),
+               int interpolation_type = LINEAR);
 
     void Reset(std::vector<float> bins,
                float start_beam,
                float beam_width,
                uint32_t bin_count,
                uint32_t beam_count,
-               int interpolation_type = WEIGHTED);
+               cv::Size cart_size = cv::Size(-1, -1),
+               int interpolation_type = LINEAR);
 
     void ResetBins(const std::vector<float>& bins);
 
@@ -208,6 +212,10 @@ public:
         return cart_image_mask_;
     }
 
+    const cv::Size& cart_size_ref() const {
+        return cart_size_ref_;
+    }
+
     const cv::Mat& raw_image() const {
         return raw_image_;
     }
@@ -323,6 +331,14 @@ public:
         image_util::show_image(title, img, scale);
     }
 
+    float cart_width_factor() const {
+        return cart_width_factor_;
+    }
+
+    float cart_height_factor() const {
+        return cart_height_factor_;
+    }
+
 private:
 
     void Initialize();
@@ -357,6 +373,7 @@ private:
     std::vector<float> angles_;
 
     cv::Size cart_size_;
+    cv::Size cart_size_ref_;
     cv::Point2f cart_origin_;
 
     int interpolation_type_;
@@ -369,6 +386,9 @@ private:
     int neighborhood_table_bin_count_;
     int neighborhood_table_beam_count_;
     int neighborhood_size_;
+
+    float cart_width_factor_;
+    float cart_height_factor_;
 };
 
 } /* namespace sonar_processing */

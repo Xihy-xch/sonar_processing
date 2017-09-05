@@ -12,6 +12,7 @@ HOGDetector::HOGDetector()
     , training_scale_factor_(0.3)
     , show_descriptor_(false)
     , show_positive_window_(false)
+    , sonar_image_size_(-1, -1)
 {
 
 }
@@ -37,6 +38,10 @@ void HOGDetector::Train(
     std::vector<int> labels;
     cv::Mat training_data;
     PrepareTrainingData(gradient_positive, gradient_negative, labels, training_data);
+
+    if (show_positive_window_) {
+        cv::destroyWindow("positive_input_image");
+    }
 
     // training using the hog descriptor
     SVMTrain(labels, training_data, training_filename);
@@ -69,7 +74,8 @@ bool HOGDetector::Detect(
         rock_util::Utilities::get_radians(sample.bearings),
         sample.beam_width.getRad(),
         sample.bin_count,
-        sample.beam_count);
+        sample.beam_count,
+        sonar_image_size_);
 
     return Detect(
         sonar_holder_.cart_image(),
@@ -143,7 +149,8 @@ void HOGDetector::LoadTrainingData(
             rock_util::Utilities::get_radians(sample.bearings),
             sample.beam_width.getRad(),
             sample.bin_count,
-            sample.beam_count);
+            sample.beam_count,
+            sonar_image_size_);
 
         sonar_source_image_ = sonar_holder_.cart_image();
         sonar_source_mask_ = sonar_holder_.cart_image_mask();
@@ -151,6 +158,11 @@ void HOGDetector::LoadTrainingData(
         std::vector<cv::Point> annotation_points = training_annotations[i];
 
         if (!annotation_points.empty()) {
+
+            if (sonar_image_size_ != cv::Size(-1, -1)) {
+                ResizeAnnotationPoints(annotation_points, annotation_points);
+            }
+
             ComputeTrainingData(annotation_points, gradient_positive, gradient_negative);
         }
     }
@@ -169,11 +181,16 @@ void HOGDetector::PrepareInput(
     // perform the sonar image preprocessing
     cv::Mat preprocessed_image;
     cv::Mat preprocessed_mask;
-    sonar_image_processing_.Apply(sonar_source_image_, sonar_source_mask_, preprocessed_image, preprocessed_mask, 0.5);
 
-    cv::Size size = sonar_source_image_.size();
+    if (sonar_image_size_ != cv::Size(-1, -1)) {
+        sonar_image_processing_.Apply(sonar_source_image_, sonar_source_mask_, preprocessed_image, preprocessed_mask);
+    }
+    else {
+        sonar_image_processing_.Apply(sonar_source_image_, sonar_source_mask_, preprocessed_image, preprocessed_mask, 0.5);
+    }
+
     cv::Mat annotation_mask;
-    CreateAnnotationMask(size, annotation, annotation_mask);
+    CreateAnnotationMask(sonar_source_image_.size(), annotation, annotation_mask);
 
     cv::Mat scaled_image;
     cv::resize(preprocessed_image, scaled_image, cv::Size(), training_scale_factor_, training_scale_factor_);
@@ -261,11 +278,7 @@ void HOGDetector::PreparePositiveInput(
     cv::Mat& result_image)
 {
     cv::Rect bounding_rect = image_util::get_bounding_rect(annotation_mask);
-
-    cv::Mat target_mask;
-    annotation_mask(bounding_rect).convertTo(target_mask, CV_32F, 1.0/255.0);
-
-    result_image = source_image(bounding_rect).mul(target_mask);
+    result_image = source_image(bounding_rect);
 
     cv::resize(result_image, result_image, window_size_);
     result_image.convertTo(result_image, CV_8U, 255.0);
@@ -450,6 +463,18 @@ void HOGDetector::TransformLocation(
     }
 
 }
+
+void HOGDetector::ResizeAnnotationPoints(
+    const std::vector<cv::Point>& source_points,
+    std::vector<cv::Point>& result_points)
+{
+    image_util::resize_points(
+        source_points,
+        result_points,
+        sonar_holder_.cart_width_factor(),
+        sonar_holder_.cart_height_factor());
+}
+
 
 
 

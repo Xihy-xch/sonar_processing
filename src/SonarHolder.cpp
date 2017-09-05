@@ -10,10 +10,10 @@ SonarHolder::SonarHolder()
     : beam_width_(0.0)
     , bin_count_(0)
     , beam_count_(0)
-    , cart_size_(0, 0)
+    , cart_size_(-1, -1)
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
-    , interpolation_type_(WEIGHTED)
+    , interpolation_type_(LINEAR)
     , neighborhood_size_(-1)
     , neighborhood_table_bin_count_(-1)
     , neighborhood_table_beam_count_(-1)
@@ -26,15 +26,16 @@ SonarHolder::SonarHolder(
     float beam_width,
     uint32_t bin_count,
     uint32_t beam_count,
+    cv::Size cart_size,
     int interpolation_type)
-    : cart_size_(0, 0)
+    : cart_size_(-1, -1)
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
     , neighborhood_size_(-1)
     , neighborhood_table_bin_count_(-1)
     , neighborhood_table_beam_count_(-1)
 {
-    Reset(bins, start_beam, beam_width, bin_count, beam_count, interpolation_type);
+    Reset(bins, start_beam, beam_width, bin_count, beam_count, cart_size, interpolation_type);
 }
 
 SonarHolder::SonarHolder(
@@ -43,12 +44,13 @@ SonarHolder::SonarHolder(
     float beam_width,
     uint32_t bin_count,
     uint32_t beam_count,
+    cv::Size cart_size,
     int interpolation_type)
-    : cart_size_(0, 0)
+    : cart_size_(-1, -1)
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
 {
-    Reset(bins, bearings, beam_width, bin_count, beam_count, interpolation_type);
+    Reset(bins, bearings, beam_width, bin_count, beam_count, cart_size, interpolation_type);
 }
 
 SonarHolder::~SonarHolder() {
@@ -60,6 +62,7 @@ void SonarHolder::Reset(
     float beam_width,
     uint32_t bin_count,
     uint32_t beam_count,
+    cv::Size cart_size,
     int interpolation_type)
 {
     bool is_initialize = (bin_count == bin_count_ && beam_count == beam_count_);
@@ -73,7 +76,10 @@ void SonarHolder::Reset(
 
     raw_image_ = cv::Mat(bins_).reshape(1, beam_count_);
 
-    if (!is_initialize) Initialize();
+    if (!is_initialize) {
+        cart_size_ = cart_size;
+        Initialize();
+    }
 
     InitializeCartesianImage(bins_, cart_image_);
 }
@@ -84,9 +90,10 @@ void SonarHolder::Reset(
     float beam_width,
     uint32_t bin_count,
     uint32_t beam_count,
+    cv::Size cart_size,
     int interpolation_type)
 {
-    Reset(bins, BuildBeamBearings(start_beam, beam_width, beam_count), beam_width, bin_count, beam_count, interpolation_type);
+    Reset(bins, BuildBeamBearings(start_beam, beam_width, beam_count), beam_width, bin_count, beam_count, cart_size, interpolation_type);
 }
 void SonarHolder::ResetBins(const std::vector<float>& bins){
     Reset(bins, bearings_, beam_width_, bin_count_, beam_count_);
@@ -114,7 +121,18 @@ std::vector<float> SonarHolder::BuildBeamBearings(float start_beam, float beam_w
 
 void SonarHolder::Initialize() {
     total_elements_ = bin_count_ * beam_count_;
-    cart_size_ = cv::Size(cos(beam_width_ - M_PI_2) * bin_count_ * 2.0, bin_count_);
+    cart_size_ref_ = cv::Size(cos(beam_width_ - M_PI_2) * bin_count_ * 2.0, bin_count_);
+
+    if (cart_size_.width == -1 || cart_size_.height == -1) {
+        cart_size_ = cart_size_ref_;
+        cart_width_factor_ = 1.0;
+        cart_height_factor_ = 1.0;
+    }
+    else {
+        cart_width_factor_ = cart_size_.width / (float)cart_size_ref_.width;
+        cart_height_factor_ = cart_size_.height / (float)cart_size_ref_.height;
+    }
+
     cart_origin_ = cv::Point2f(cart_size_.width / 2, cart_size_.height - 1);
     bins_mask_.assign(total_elements_, 1);
 
@@ -126,10 +144,25 @@ void SonarHolder::Initialize() {
 
 void SonarHolder::InitializeCartesianPoints() {
     cart_points_.assign(total_elements_, cv::Point2f(-1, -1));
-    for (uint32_t bin = 0; bin < bin_count_; bin++) {
-        for (uint32_t beam = 0; beam < beam_count_; beam++) {
-            float radius = (bin == 0) ? 0.0001 : (float)bin;
-            cart_points_[beam * bin_count_ + bin] = base::MathUtil::to_cartesianf(bearings_[beam], radius, -M_PI_2) + cart_origin_;
+
+    if (cart_size_ != cart_size_ref_) {
+        cv::Point2f cart_origin_ref = cv::Point2f(cart_size_ref_.width / 2, cart_size_ref_.height - 1);
+        for (uint32_t bin = 0; bin < bin_count_; bin++) {
+            for (uint32_t beam = 0; beam < beam_count_; beam++) {
+                float radius = (bin == 0) ? 0.0001 : (float)bin;
+                cv::Point2f cart_point = base::MathUtil::to_cartesianf(bearings_[beam], radius, -M_PI_2) + cart_origin_ref;
+                cart_point.x = cart_point.x * cart_width_factor_;
+                cart_point.y = cart_point.y * cart_height_factor_;
+                cart_points_[beam * bin_count_ + bin] = cart_point;
+            }
+        }
+    }
+    else {
+        for (uint32_t bin = 0; bin < bin_count_; bin++) {
+            for (uint32_t beam = 0; beam < beam_count_; beam++) {
+                float radius = (bin == 0) ? 0.0001 : (float)bin;
+                cart_points_[beam * bin_count_ + bin] = base::MathUtil::to_cartesianf(bearings_[beam], radius, -M_PI_2) + cart_origin_;
+            }
         }
     }
 }
@@ -225,8 +258,8 @@ void SonarHolder::WeightedPolarToCartesianImage(const std::vector<float>& bins, 
                     float s2 = bins[(beam+1)*bin_count_+bin+0];
                     float s3 = bins[(beam+1)*bin_count_+bin+1];
 
-                    float r0 = bin+0;
-                    float r1 = bin+1;
+                    float r0 = (bin+0) * cart_height_factor_;
+                    float r1 = (bin+1) * cart_height_factor_;
                     float t0 = bearings_[beam+0];
                     float t1 = bearings_[beam+1];
 
@@ -257,8 +290,8 @@ void SonarHolder::SetCartesianToPolarSector(uint32_t polar_idx) {
 
     cv::Rect rc = cv::boundingRect(points);
 
-    float r0 = bin;
-    float r1 = bin+1;
+    float r0 = bin * cart_height_factor_;
+    float r1 = (bin+1) * cart_height_factor_;
     float t0 = bearings_[beam];
     float t1 = bearings_[beam+1];
 

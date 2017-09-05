@@ -38,6 +38,9 @@ public:
         show_positive_window_ = show_positive_window;
     }
 
+    void set_sonar_image_size(cv::Size sonar_image_size) {
+        sonar_image_size_ = sonar_image_size;
+    }
 
 
     void set_sonar_image_processing(const SonarImagePreprocessing& p) {
@@ -157,6 +160,10 @@ private:
         cv::Size source_size,
         std::vector<cv::RotatedRect>& rotated_locations);
 
+    void ResizeAnnotationPoints(
+        const std::vector<cv::Point>& source_points,
+        std::vector<cv::Point>& result_points);
+
     SonarHolder sonar_holder_;
     SonarImagePreprocessing sonar_image_processing_;
     cv::Size window_size_;
@@ -168,6 +175,8 @@ private:
     cv::HOGDescriptor hog_descriptor_;
     cv::Mat sonar_source_image_;
     cv::Mat sonar_source_mask_;
+
+    cv::Size sonar_image_size_;
 
 };
 

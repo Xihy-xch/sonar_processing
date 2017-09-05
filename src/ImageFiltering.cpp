@@ -126,7 +126,7 @@ void saliency_color(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputAr
     sm.copyTo(dst_arr);
 }
 
-void border_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArray mask_arr) {
+void border_filter(cv::InputArray src_arr, cv::OutputArray dst_arr) {
     cv::Mat G;
     cv::Mat Gx, Gy;
     cv::Mat Gx2, Gy2;
@@ -139,7 +139,19 @@ void border_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArr
 
     cv::addWeighted(Gx2, 0.5, Gy2, 0.5, 0, G);
 
-    G.copyTo(dst_arr, mask_arr);
+    G.copyTo(dst_arr);
+}
+
+void border_filter(const cv::Mat& src, cv::Mat& dst, const cv::Mat mask, BorderFilterType type) {
+    cv::Mat kernel_x, kernel_y;
+    border_filter_kernel(kernel_x, 0, type);
+    border_filter_kernel(kernel_y, 1, type);
+
+    cv::Mat Gx8u, Gy8u;
+    filter2d(src, Gx8u, kernel_x, mask);
+    filter2d(src, Gy8u, kernel_y, mask);
+
+    cv::addWeighted(Gx8u, 0.5, Gy8u, 0.5, 0, dst);
 }
 
 void saliency_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::InputArray mask_arr) {
@@ -320,6 +332,69 @@ void insonification_correction(const cv::Mat& src, const cv::Mat& mask, cv::Mat&
         }
     }
     dst.setTo(1, dst > 1);
+}
+
+void filter2d(const cv::Mat& src, cv::Mat& dst, const cv::Mat kernel, const cv::Mat& mask)
+{
+    CV_Assert(kernel.empty() == false);
+    CV_Assert(kernel.cols == kernel.rows);
+    CV_Assert(src.type() == CV_8U);
+    CV_Assert(kernel.type() == CV_32F);
+    CV_Assert(mask.type() == CV_8U);
+    CV_Assert(src.channels() == 1);
+
+    dst = cv::Mat::zeros(src.size(), CV_8U);
+
+    int cols = src.cols;
+    int rows = src.rows;
+
+    int dx = kernel.cols/2;
+    int dy = kernel.rows/2;
+    int kernel_size = kernel.cols * kernel.rows;
+
+    for (int y = dx; y < rows-dx; y++) {
+        for (int x = dy; x < cols-dy; x++) {
+
+            int mask_count = 0;
+            float sum = 0;
+            for (int kernel_y = 0; kernel_y < kernel.rows; kernel_y++) {
+                for (int kernel_x = 0; kernel_x < kernel.cols; kernel_x++) {
+                    int yy = y-dy+kernel_y;
+                    int xx = x-dx+kernel_x;
+
+                    if (mask.at<uchar>(yy, xx)) {
+                        sum += src.at<uchar>(yy, xx) * kernel.at<float>(kernel_y, kernel_x);
+                        mask_count++;
+                    }
+
+                }
+            }
+
+            if (mask_count == kernel_size) {
+                dst.at<uchar>(y, x) = cv::saturate_cast<uchar>(sum);
+            }
+        }
+    }
+}
+
+void border_filter_kernel(cv::Mat& kernel, int direction, BorderFilterType type)
+{
+
+    if (type == kSCharr) {
+        float Gx[] = {-3, 0, 3, -10, 0, 10, -3, 0, 3};
+        cv::Mat(3, 3, CV_32F, Gx).copyTo(kernel);
+    }
+    else if (type == kPrewitt) {
+        float Gx[] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
+        cv::Mat(3, 3, CV_32F, Gx).copyTo(kernel);
+    }
+    else {
+        float Gx[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1 };
+        cv::Mat(3, 3, CV_32F, Gx).copyTo(kernel);
+    }
+
+    if (direction == 1) kernel = kernel.t();
+
 }
 
 } /* namespace image_filtering */

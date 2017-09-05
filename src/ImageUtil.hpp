@@ -83,6 +83,13 @@ inline void dilate(cv::InputArray src_arr, cv::OutputArray dst_arr, cv::Size ker
     morphology(src_arr, dst_arr, cv::MORPH_DILATE, kernel_size, iterations);
 }
 
+inline void resize_points(const std::vector<cv::Point>& src, std::vector<cv::Point>& dst, float scale_x, float scale_y) {
+    std::vector<cv::Point> resized;
+    resized.resize(src.size());
+    for (size_t i = 0; i < src.size(); i++) resized[i] = cv::Point(src[i].x * scale_x, src[i].y * scale_y);
+    dst = resized;
+}
+
 cv::Mat vector32f_to_mat8u(const std::vector<float>& src, int beam_count, int bin_count);
 
 void equalize_histogram_32f(cv::Mat src, cv::Mat dst);
