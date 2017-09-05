@@ -69,7 +69,7 @@ cv::Mat RLS::sliding_window(const cv::Mat& src) {
     }
 
     // store current frame
-    frames.push_back(src);
+    frames.push_back(src.clone());
 
     // update coefficients
     return infinite_window(src);
