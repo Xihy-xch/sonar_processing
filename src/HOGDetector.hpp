@@ -42,17 +42,36 @@ public:
         sonar_image_size_ = sonar_image_size;
     }
 
+    void set_image_scale(double image_scale) {
+        image_scale_ = image_scale;
+    }
+
+    void set_window_stride(const cv::Size& window_stride) {
+        window_stride_ = window_stride;
+    }
+
+    void set_positive_input_validate(bool positive_input_validate) {
+        positive_input_validate_ = positive_input_validate;
+    }
 
     void set_sonar_image_processing(const SonarImagePreprocessing& p) {
         sonar_image_processing_.set_roi_extract_thresh(p.roi_extract_thresh());
+        sonar_image_processing_.set_mean_difference_filter_enable(p.mean_difference_filter_enable());
         sonar_image_processing_.set_roi_extract_start_bin(p.roi_extract_start_bin());
         sonar_image_processing_.set_mean_filter_ksize(p.mean_filter_ksize());
-        sonar_image_processing_.set_mean_difference_filter_enable(p.mean_difference_filter_enable());
         sonar_image_processing_.set_mean_difference_filter_ksize(p.mean_difference_filter_ksize());
         sonar_image_processing_.set_mean_difference_filter_source(p.mean_difference_filter_source());
         sonar_image_processing_.set_median_blur_filter_ksize(p.median_blur_filter_ksize());
         sonar_image_processing_.set_border_filter_type(p.border_filter_type());
         sonar_image_processing_.set_border_filter_enable(p.border_filter_enable());
+    }
+
+    void set_detection_scale_factor(double detection_scale_factor) {
+        detection_scale_factor_ = detection_scale_factor;
+    }
+
+    void set_orientation_step(double orientation_step) {
+        orientation_step_ = orientation_step;
     }
 
     void LoadSVMTrain(const std::string& svm_model_filename);
@@ -70,6 +89,13 @@ public:
         std::vector<cv::RotatedRect>& locations,
         std::vector<double>& found_weights);
 
+    bool Detect(
+        const cv::Mat& sonar_source_image,
+        const cv::Mat& sonar_source_mask,
+        std::vector<cv::RotatedRect>& locations,
+        std::vector<double>& found_weights);
+
+
 private:
 
     void LoadTrainingData(
@@ -78,12 +104,27 @@ private:
         std::vector<cv::Mat>& gradient_positive,
         std::vector<cv::Mat>& gradient_negative);
 
+    void PerformPreprocessing(
+        cv::Mat& preprocessed_image,
+        cv::Mat& preprocessed_mask);
+
     void PrepareInput(
+        const cv::Mat& preprocessed_image,
+        const cv::Mat& preprocessed_mask,
         const std::vector<cv::Point>& annotation,
+        double scale_factor,
         cv::Mat& input_image,
         cv::Mat& input_mask,
         cv::Mat& annotation_mask,
         double& rotated_angle);
+
+    void PrepareInput(
+        const cv::Mat& preprocessed_image,
+        const cv::Mat& preprocessed_mask,
+        double scale_factor,
+        cv::Mat& input_image,
+        cv::Mat& input_mask);
+
 
     void ComputeTrainingData(
         const std::vector<cv::Point>& annotation,
@@ -164,19 +205,71 @@ private:
         const std::vector<cv::Point>& source_points,
         std::vector<cv::Point>& result_points);
 
+
+    void FilterLocationInsideMask(
+        const std::vector<cv::Rect>& locations,
+        const std::vector<double>& weights,
+        std::vector<cv::Rect>& result_locations,
+        std::vector<double>& result_weights,
+        const cv::Mat& input,
+        const cv::Mat& mask);
+
+    bool ValidatePositiveInput(
+        const cv::Mat& mask,
+        const cv::Mat& annotation_mask);
+
+    void RotateInput(
+        const cv::Mat& source_image,
+        const cv::Mat& source_mask,
+        const cv::Point2f& center,
+        double angle,
+        cv::Mat& rotated_image,
+        cv::Mat& rotated_mask);
+
+    bool PerformDetect(
+        const cv::Mat& source_image,
+        const cv::Mat& source_mask,
+        double rotated_angle,
+        std::vector<cv::RotatedRect>& locations,
+        std::vector<double>& found_weights);
+
+    void RotateAndDetect(
+        const cv::Mat& source_image,
+        const cv::Mat& source_mask,
+        double first_angle,
+        double last_angle,
+        double angle_step,
+        std::vector<cv::RotatedRect>& locations,
+        std::vector<double>& found_weights);
+
+    double FindBestDetectionAngle(
+        const std::vector<cv::RotatedRect>& locations,
+        const std::vector<double>& weights);
+
     SonarHolder sonar_holder_;
     SonarImagePreprocessing sonar_image_processing_;
     cv::Size window_size_;
 
     double training_scale_factor_;
+    double detection_scale_factor_;
     bool show_descriptor_;
     bool show_positive_window_;
+    bool positive_input_validate_;
 
     cv::HOGDescriptor hog_descriptor_;
     cv::Mat sonar_source_image_;
     cv::Mat sonar_source_mask_;
 
     cv::Size sonar_image_size_;
+
+    double image_scale_;
+    cv::Size window_stride_;
+
+    double orientation_step_;
+
+    int succeeded_detect_count_;
+
+    double last_detected_orientation_;
 
 };
 

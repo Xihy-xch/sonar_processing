@@ -539,13 +539,49 @@ void image_util::draw_locations(
     const std::vector<cv::RotatedRect>& loc_boxs,
     cv::Mat& dst)
 {
+    image_util::draw_locations(src, loc_boxs, std::vector<double>(), dst);
+}
+
+void image_util::draw_locations(
+    const cv::Mat& src,
+    const std::vector<cv::RotatedRect>& loc_boxs,
+    const std::vector<double>& weights,
+    cv::Mat& dst) {
+
     if (!loc_boxs.empty()) {
         cv::cvtColor(src, dst, CV_GRAY2BGR);
-        std::vector<cv::RotatedRect>::const_iterator it = loc_boxs.begin();
-        for(; it != loc_boxs.end(); ++it ) {
-            // get annotation rotated rect
-            image_util::draw_rotated_rect(dst, cv::Scalar(0, 255, 0), *it);
-            cv::circle(dst, (*it).center, 10, cv::Scalar(0, 255, 0), CV_FILLED);
+
+        if (!weights.empty()) {
+            const double font_scale = 0.8;
+            const int font_face = cv::FONT_HERSHEY_COMPLEX;
+            const int text_thickness = 2;
+
+            char text[64];
+
+            assert(weights.size() == loc_boxs.size());
+            for (size_t i = 0; i < loc_boxs.size(); i++) {
+                // get annotation rotated rect
+                image_util::draw_rotated_rect(dst, cv::Scalar(0, 255, 0), loc_boxs[i]);
+            }
+
+            for (size_t i = 0; i < loc_boxs.size(); i++) {
+                snprintf(text, 64, "%0.3f", weights[i]);
+
+                // get text size
+                int baseline = 0;
+                cv::Size text_size = cv::getTextSize(text, font_face, font_scale, text_thickness, &baseline);
+
+                cv::Point text_org = cv::Point(loc_boxs[i].center.x-text_size.width/2, loc_boxs[i].center.y-text_size.height/2);
+
+                cv::putText(dst, text, text_org, font_face, font_scale, cv::Scalar(0, 0, 255), text_thickness);
+            }
+        }
+        else {
+            for (size_t i = 0; i < loc_boxs.size(); i++) {
+                // get annotation rotated rect
+                image_util::draw_rotated_rect(dst, cv::Scalar(0, 255, 0), loc_boxs[i]);
+                cv::circle(dst, loc_boxs[i].center, 10, cv::Scalar(0, 255, 0), CV_FILLED);
+            }
         }
     }
 }

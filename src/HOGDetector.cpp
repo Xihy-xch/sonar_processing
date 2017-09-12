@@ -3,6 +3,7 @@
 #include "HogDescriptorViz.hpp"
 #include "LinearSVM.hpp"
 #include "Preprocessing.hpp"
+#include "Utils.hpp"
 #include "HOGDetector.hpp"
 
 namespace sonar_processing {
@@ -10,9 +11,13 @@ namespace sonar_processing {
 HOGDetector::HOGDetector()
     : window_size_(192, 48)
     , training_scale_factor_(0.3)
+    , detection_scale_factor_(0.5)
     , show_descriptor_(false)
     , show_positive_window_(false)
     , sonar_image_size_(-1, -1)
+    , image_scale_(1.125)
+    , window_stride_(8, 8)
+    , succeeded_detect_count_(0)
 {
 
 }
@@ -95,42 +100,168 @@ bool HOGDetector::Detect(
     sonar_source_image.copyTo(sonar_source_image_);
     sonar_source_mask.copyTo(sonar_source_mask_);
 
+    // perform preprocessing
+    cv::Mat preprocessed_image;
+    cv::Mat preprocessed_mask;
+    PerformPreprocessing(preprocessed_image, preprocessed_mask);
+
     double rotated_angle;
     cv::Mat input_image;
     cv::Mat input_mask;
     cv::Mat input_annotation_mask;
 
     // prepare hog inputs
-    PrepareInput(annotation_points, input_image, input_mask, input_annotation_mask, rotated_angle);
+    PrepareInput(
+        preprocessed_image,
+        preprocessed_mask,
+        annotation_points,
+        detection_scale_factor_,
+        input_image,
+        input_mask,
+        input_annotation_mask,
+        rotated_angle);
 
-    cv::Size input_image_size = input_image.size();
+    return PerformDetect(input_image, input_mask, rotated_angle, locations, found_weights);
+}
+
+bool HOGDetector::Detect(
+    const cv::Mat& sonar_source_image,
+    const cv::Mat& sonar_source_mask,
+    std::vector<cv::RotatedRect>& locations,
+    std::vector<double>& found_weights)
+{
+    sonar_source_image.copyTo(sonar_source_image_);
+    sonar_source_mask.copyTo(sonar_source_mask_);
+
+    // perform preprocessing
+    cv::Mat preprocessed_image;
+    cv::Mat preprocessed_mask;
+    PerformPreprocessing(preprocessed_image, preprocessed_mask);
+
+    cv::Mat scaled_image;
+    cv::resize(preprocessed_image, scaled_image, cv::Size(), detection_scale_factor_, detection_scale_factor_);
+
+    cv::Mat scaled_mask;
+    cv::resize(preprocessed_mask, scaled_mask, cv::Size(), detection_scale_factor_, detection_scale_factor_);
+
+    if (succeeded_detect_count_ < 2) {
+
+        RotateAndDetect(scaled_image, scaled_mask, -90, 90, orientation_step_, locations, found_weights);
+
+        if (locations.empty()) {
+            succeeded_detect_count_ = 0;
+            last_detected_orientation_ = 0.0;
+            return false;
+        }
+
+        last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights);
+
+        succeeded_detect_count_++;
+        return true;
+    }
+
+    RotateAndDetect(scaled_image, scaled_mask, last_detected_orientation_-15, last_detected_orientation_+15, 5, locations, found_weights);
+
+    if (locations.empty()) {
+        succeeded_detect_count_ = 0;
+        last_detected_orientation_ = 0.0;
+        return false;
+    }
+
+    last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights);
+
+    succeeded_detect_count_++;
+
+    return true;
+}
+
+void HOGDetector::RotateAndDetect(
+    const cv::Mat& source_image,
+    const cv::Mat& source_mask,
+    double first_angle,
+    double last_angle,
+    double angle_step,
+    std::vector<cv::RotatedRect>& locations,
+    std::vector<double>& found_weights)
+{
+    cv::Mat rotated_image;
+    cv::Mat rotated_mask;
+    cv::Point2f center = cv::Point2f(source_image.cols/2, source_image.rows/2);
+
+    for (double theta=first_angle; theta<=last_angle; theta+=angle_step) {
+        if (fabs(theta) >= 2.5) {
+            RotateInput(source_image, source_mask, center, theta, rotated_image, rotated_mask);
+            PerformDetect(rotated_image, rotated_mask, theta, locations, found_weights);
+        }
+        else {
+            PerformDetect(source_image, source_mask, theta, locations, found_weights);
+        }
+    }
+}
+
+double HOGDetector::FindBestDetectionAngle(
+    const std::vector<cv::RotatedRect>& locations,
+    const std::vector<double>& weights)
+{
+    std::vector<size_t> indices(weights.size());
+    for (size_t i = 0; i < indices.size(); i++) indices[i]=i;
+    std::sort(indices.begin(), indices.end(), sonar_processing::utils::IndexComparator<double>(weights));
+    std::reverse(indices.begin(), indices.end());
+    return locations[indices[0]].angle;
+}
+
+bool HOGDetector::PerformDetect(
+    const cv::Mat& source_image,
+    const cv::Mat& source_mask,
+    double rotated_angle,
+    std::vector<cv::RotatedRect>& locations,
+    std::vector<double>& found_weights)
+{
+    cv::Size source_image_size = source_image.size();
 
     // set region of interest
-    cv::Rect bounding_rect = image_util::get_bounding_rect(input_mask);
+    cv::Rect bounding_rect = image_util::get_bounding_rect(source_mask);
 
     // set the region of intereset
-    input_image(bounding_rect).copyTo(input_image);
-    input_mask(bounding_rect).copyTo(input_mask);
+    cv::Mat input_image;
+    cv::Mat input_mask;
+    source_image(bounding_rect).copyTo(input_image);
+    source_mask(bounding_rect).copyTo(input_mask);
 
     // convert to unsigned char
     input_image.convertTo(input_image, CV_8U, 255.0);
 
-    // detect using multi scale method
     std::vector<cv::Rect> locations_rects;
+    std::vector<double> weights;
     hog_descriptor_.detectMultiScale(
-        input_image, locations_rects, found_weights,
-        0, cv::Size(8, 8), cv::Size(0, 0), 1.125, 1);
+        input_image, // the input image
+        locations_rects, // the found locations rect
+        weights, // the found weights
+        0.0, // the hit-threshold
+        window_stride_, // the window stride
+        cv::Size(8, 8), // the padding
+        // 1.125, // the image scale
+        image_scale_, // the image scale
+        // 2, // the final threshold
+        2, // the final threshold
+        false); // enable the mean shift grouping
+
+
+    FilterLocationInsideMask(locations_rects, weights, locations_rects, weights, input_image, input_mask);
 
     if (locations_rects.empty()){
         return false;
     }
 
+    found_weights.insert(found_weights.end(), weights.begin(), weights.end());
+
     TransformLocation(
-        locations_rects, training_scale_factor_, -rotated_angle,
-        bounding_rect.tl(), input_image_size, locations);
+        locations_rects, detection_scale_factor_, -rotated_angle,
+        bounding_rect.tl(), source_image_size, locations);
 
     return true;
 }
+
 
 void HOGDetector::LoadTrainingData(
     const std::vector<base::samples::Sonar>& training_samples,
@@ -171,35 +302,40 @@ void HOGDetector::LoadTrainingData(
     std::cout << "Total Negative samples: " << gradient_negative.size() << std::endl;
 }
 
-void HOGDetector::PrepareInput(
-    const std::vector<cv::Point>& annotation,
-    cv::Mat& input_image,
-    cv::Mat& input_mask,
-    cv::Mat& input_annotation_mask,
-    double& rotated_angle)
+void HOGDetector::PerformPreprocessing(
+    cv::Mat& preprocessed_image,
+    cv::Mat& preprocessed_mask)
 {
     // perform the sonar image preprocessing
-    cv::Mat preprocessed_image;
-    cv::Mat preprocessed_mask;
-
     if (sonar_image_size_ != cv::Size(-1, -1)) {
         sonar_image_processing_.Apply(sonar_source_image_, sonar_source_mask_, preprocessed_image, preprocessed_mask);
     }
     else {
         sonar_image_processing_.Apply(sonar_source_image_, sonar_source_mask_, preprocessed_image, preprocessed_mask, 0.5);
     }
+}
 
+void HOGDetector::PrepareInput(
+    const cv::Mat& preprocessed_image,
+    const cv::Mat& preprocessed_mask,
+    const std::vector<cv::Point>& annotation,
+    double scale_factor,
+    cv::Mat& input_image,
+    cv::Mat& input_mask,
+    cv::Mat& input_annotation_mask,
+    double& rotated_angle)
+{
     cv::Mat annotation_mask;
     CreateAnnotationMask(sonar_source_image_.size(), annotation, annotation_mask);
 
     cv::Mat scaled_image;
-    cv::resize(preprocessed_image, scaled_image, cv::Size(), training_scale_factor_, training_scale_factor_);
+    cv::resize(preprocessed_image, scaled_image, cv::Size(), scale_factor, scale_factor);
 
     cv::Mat scaled_mask;
-    cv::resize(preprocessed_mask, scaled_mask, cv::Size(), training_scale_factor_, training_scale_factor_);
+    cv::resize(preprocessed_mask, scaled_mask, cv::Size(), scale_factor, scale_factor);
 
     cv::Mat scaled_annotation_mask;
-    cv::resize(annotation_mask, scaled_annotation_mask, cv::Size(), training_scale_factor_, training_scale_factor_);
+    cv::resize(annotation_mask, scaled_annotation_mask, cv::Size(), scale_factor, scale_factor);
 
     // perform the orientation normalize
     OrientationNormalize(scaled_image, scaled_mask, scaled_annotation_mask,
@@ -207,22 +343,41 @@ void HOGDetector::PrepareInput(
         input_image, input_mask, input_annotation_mask, rotated_angle);
 }
 
+
 void HOGDetector::ComputeTrainingData(
     const std::vector<cv::Point>& annotation,
     std::vector<cv::Mat>& gradient_positive,
     std::vector<cv::Mat>& gradient_negative)
 {
+    // perform preprocessing
+    cv::Mat preprocessed_image;
+    cv::Mat preprocessed_mask;
+    PerformPreprocessing(preprocessed_image, preprocessed_mask);
 
-    double rotated_angle;
     cv::Mat input_image;
     cv::Mat input_mask;
     cv::Mat input_annotation_mask;
+    double rotated_angle;
 
     // prepare hog inputs
-    PrepareInput(annotation, input_image, input_mask, input_annotation_mask, rotated_angle);
+    PrepareInput(
+        preprocessed_image,
+        preprocessed_mask,
+        annotation,
+        training_scale_factor_,
+        input_image,
+        input_mask,
+        input_annotation_mask,
+        rotated_angle);
 
-    // compute positive gradients
-    ComputePositive(input_image, input_annotation_mask, gradient_positive);
+    // validate positive input
+    if (!positive_input_validate_ ||
+        (positive_input_validate_ &&
+        ValidatePositiveInput(input_mask, input_annotation_mask))) {
+        // compute positive gradients
+        ComputePositive(input_image, input_annotation_mask, gradient_positive);
+    }
+
 
     // compute negative gradients
     ComputeNegative(input_image, input_mask, input_annotation_mask, gradient_negative);
@@ -251,9 +406,20 @@ void HOGDetector::OrientationNormalize(
 {
     cv::Point2f center = cv::Point2f(source_image.cols/2, source_image.rows/2);
     rotated_angle = (bbox.size.width>=bbox.size.height) ? bbox.angle : bbox.angle+90;
-    image_util::rotate(source_image, rotated_image, rotated_angle, center);
-    image_util::rotate(source_mask, rotated_mask, rotated_angle, center);
     image_util::rotate(annotation_mask, rotated_annotation_mask, rotated_angle, center);
+    RotateInput(source_image, source_mask, center, rotated_angle, rotated_image, rotated_mask);
+}
+
+void HOGDetector::RotateInput(
+    const cv::Mat& source_image,
+    const cv::Mat& source_mask,
+    const cv::Point2f& center,
+    double angle,
+    cv::Mat& rotated_image,
+    cv::Mat& rotated_mask)
+{
+    image_util::rotate(source_image, rotated_image, angle, center);
+    image_util::rotate(source_mask, rotated_mask, angle, center);
 }
 
 void HOGDetector::ComputePositive(
@@ -459,7 +625,14 @@ void HOGDetector::TransformLocation(
         cv::rectangle(mask, rc, cv::Scalar(255), CV_FILLED);
         image_util::rotate(mask, mask, rotate, center, sonar_source_image_.size());
         std::vector<cv::Point> contours = preprocessing::find_biggest_contour(mask);
-        rotated_locations.push_back(cv::minAreaRect(contours));
+        cv::RotatedRect bbox = cv::minAreaRect(contours);
+        if (bbox.size.width<bbox.size.height) {
+            double aux = bbox.size.width;
+            bbox.size.width = bbox.size.height;
+            bbox.size.height = aux;
+            bbox.angle = bbox.angle+90;
+        }
+        rotated_locations.push_back(bbox);
     }
 
 }
@@ -475,7 +648,42 @@ void HOGDetector::ResizeAnnotationPoints(
         sonar_holder_.cart_height_factor());
 }
 
+void HOGDetector::FilterLocationInsideMask(
+    const std::vector<cv::Rect>& locations,
+    const std::vector<double>& weights,
+    std::vector<cv::Rect>& result_locations,
+    std::vector<double>& result_weights,
+    const cv::Mat& input,
+    const cv::Mat& mask)
+{
+    cv::Mat mat = cv::Mat::zeros(input.size(), CV_8UC1);
 
+    std::vector<cv::Rect> new_locations;
+    std::vector<double> new_weights;
+    for (size_t i = 0; i < locations.size(); i++) {
+        mat.setTo(0);
+        cv::rectangle(mat, locations[i], cv::Scalar(255), CV_FILLED);
 
+        cv::Mat res;
+        cv::bitwise_and(mat, mask, res);
+        double area = (cv::sum(res)[0] / cv::sum(mat)[0]);
+
+        if (area > 0.6) {
+            new_locations.push_back(locations[i]);
+            new_weights.push_back(weights[i]);
+        }
+    }
+    result_locations = new_locations;
+    result_weights = new_weights;
+}
+
+bool HOGDetector::ValidatePositiveInput(
+    const cv::Mat& mask,
+    const cv::Mat& annotation_mask)
+{
+    cv::Mat res;
+    cv::bitwise_and(mask, annotation_mask, res);
+    return (cv::sum(res)[0] / cv::sum(annotation_mask)[0]) > 0.7;
+}
 
 } /* namespace sonar_processing */

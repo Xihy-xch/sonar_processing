@@ -210,6 +210,12 @@ void draw_locations(
     const std::vector<cv::RotatedRect>& loc_boxs,
     cv::Mat& dst);
 
+void draw_locations(
+    const cv::Mat& src,
+    const std::vector<cv::RotatedRect>& loc_boxs,
+    const std::vector<double>& weights,
+    cv::Mat& dst);
+
 void draw_rects(
     const cv::Mat& src,
     const std::vector<cv::Rect>& rects,

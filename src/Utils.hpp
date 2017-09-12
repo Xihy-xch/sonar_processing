@@ -12,6 +12,16 @@ namespace sonar_processing {
 
 namespace utils {
 
+template <typename T>
+struct IndexComparator {
+    IndexComparator(std::vector<T> vec) : vec_(vec) {}
+
+    bool operator() (size_t i, size_t j) { return vec_[i]<vec_[j]; }
+
+private:
+    std::vector<T> vec_;
+};
+
 inline cv::Rect clip_rect(const cv::Point& tl, const cv::Point& br, const cv::Point& min_tl, const cv::Point& max_br) {
     return cv::Rect(cv::Point(std::max(min_tl.x, tl.x), std::max(min_tl.y, tl.y)),
                     cv::Point(std::min(br.x, max_br.x), std::min(br.y, max_br.y)));
