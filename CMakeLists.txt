@@ -22,10 +22,6 @@ add_library (
     ${SOURCES}
 )
 
-target_link_libraries (
-    sonar_processing
-)
-
 install(
     FILES ${HEADERS}
     DESTINATION include/sonar_toolkit/${PROJECT_NAME}
