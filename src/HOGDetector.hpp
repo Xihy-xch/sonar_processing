@@ -70,8 +70,16 @@ public:
         detection_scale_factor_ = detection_scale_factor;
     }
 
+    void set_detection_minimum_weight(double detection_minimum_weight) {
+        detection_minimum_weight_ = detection_minimum_weight;
+    }
+
     void set_orientation_step(double orientation_step) {
         orientation_step_ = orientation_step;
+    }
+
+    void set_orientation_range(double orientation_range) {
+        orientation_range_ = orientation_range;
     }
 
     void LoadSVMTrain(const std::string& svm_model_filename);
@@ -244,7 +252,8 @@ private:
 
     double FindBestDetectionAngle(
         const std::vector<cv::RotatedRect>& locations,
-        const std::vector<double>& weights);
+        const std::vector<double>& weights,
+        double& best_weight);
 
     SonarHolder sonar_holder_;
     SonarImagePreprocessing sonar_image_processing_;
@@ -252,6 +261,8 @@ private:
 
     double training_scale_factor_;
     double detection_scale_factor_;
+    double detection_minimum_weight_;
+
     bool show_descriptor_;
     bool show_positive_window_;
     bool positive_input_validate_;
@@ -266,6 +277,7 @@ private:
     cv::Size window_stride_;
 
     double orientation_step_;
+    double orientation_range_;
 
     int succeeded_detect_count_;
 

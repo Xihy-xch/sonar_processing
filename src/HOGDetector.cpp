@@ -12,12 +12,15 @@ HOGDetector::HOGDetector()
     : window_size_(192, 48)
     , training_scale_factor_(0.3)
     , detection_scale_factor_(0.5)
+    , detection_minimum_weight_(0)
     , show_descriptor_(false)
     , show_positive_window_(false)
     , sonar_image_size_(-1, -1)
     , image_scale_(1.125)
     , window_stride_(8, 8)
     , succeeded_detect_count_(0)
+    , orientation_step_(15)
+    , orientation_range_(15)
 {
 
 }
@@ -154,13 +157,16 @@ bool HOGDetector::Detect(
             return false;
         }
 
-        last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights);
+        double best_weight = -1;
+        last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights, best_weight);
+
+        if (best_weight < detection_minimum_weight_) return false;
 
         succeeded_detect_count_++;
         return true;
     }
 
-    RotateAndDetect(scaled_image, scaled_mask, last_detected_orientation_-15, last_detected_orientation_+15, 5, locations, found_weights);
+    RotateAndDetect(scaled_image, scaled_mask, last_detected_orientation_-orientation_range_, last_detected_orientation_+orientation_range_, 5, locations, found_weights);
 
     if (locations.empty()) {
         succeeded_detect_count_ = 0;
@@ -168,7 +174,9 @@ bool HOGDetector::Detect(
         return false;
     }
 
-    last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights);
+    double best_weight = -1;
+    last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights, best_weight);
+    if (best_weight < detection_minimum_weight_) return false;
 
     succeeded_detect_count_++;
 
@@ -201,12 +209,14 @@ void HOGDetector::RotateAndDetect(
 
 double HOGDetector::FindBestDetectionAngle(
     const std::vector<cv::RotatedRect>& locations,
-    const std::vector<double>& weights)
+    const std::vector<double>& weights,
+    double& best_weight)
 {
     std::vector<size_t> indices(weights.size());
     for (size_t i = 0; i < indices.size(); i++) indices[i]=i;
     std::sort(indices.begin(), indices.end(), sonar_processing::utils::IndexComparator<double>(weights));
     std::reverse(indices.begin(), indices.end());
+    best_weight = weights[indices[0]];
     return locations[indices[0]].angle;
 }
 
