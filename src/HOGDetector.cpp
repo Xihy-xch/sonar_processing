@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <rock_util/Utilities.hpp>
 #include "HogDescriptorViz.hpp"
 #include "LinearSVM.hpp"
 #include "Preprocessing.hpp"
@@ -79,7 +78,7 @@ bool HOGDetector::Detect(
 
     sonar_holder_.Reset(
         sample.bins,
-        rock_util::Utilities::get_radians(sample.bearings),
+        utils::get_radians(sample.bearings),
         sample.beam_width.getRad(),
         sample.bin_count,
         sample.beam_count,
@@ -287,7 +286,7 @@ void HOGDetector::LoadTrainingData(
         base::samples::Sonar sample = training_samples[i];
 
         sonar_holder_.Reset(sample.bins,
-            rock_util::Utilities::get_radians(sample.bearings),
+            utils::get_radians(sample.bearings),
             sample.beam_width.getRad(),
             sample.bin_count,
             sample.beam_count,

@@ -7,6 +7,7 @@
 #include <vector>
 #include <sys/time.h>
 #include <opencv2/opencv.hpp>
+#include <base/Angle.hpp>
 
 namespace sonar_processing {
 
@@ -63,6 +64,12 @@ inline void csv_write(std::string filename, const std::vector<T> data) {
     out.open(filename.c_str());
     out << ss.str();
     out.close();
+}
+
+inline static std::vector<float> get_radians(const std::vector<base::Angle>& angles) {
+    std::vector<float> radians;
+    for (std::vector<base::Angle>::const_iterator it = angles.begin(); it != angles.end(); it++) radians.push_back(it->rad);
+    return radians;
 }
 
 namespace now {
