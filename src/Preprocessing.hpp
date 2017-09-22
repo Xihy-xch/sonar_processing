@@ -80,12 +80,6 @@ std::vector<std::vector<cv::Point> > find_contours_and_filter(cv::Mat src, cv::S
 
 std::vector<std::vector<cv::Point> > adaptative_find_contours_and_filter(cv::Mat src, double area_factor, double width_factor, double height_factor);
 
-std::vector<cv::Point> compute_ground_distance_line(cv::Mat mat, float thresh_factor = 1.0);
-
-cv::Mat remove_ground_distance(cv::Mat src, cv::Rect& horiz_roi);
-
-cv::Mat remove_ground_distance_accurate(cv::Mat src, cv::Rect& horiz_roi);
-
 uint32_t find_first_higher(cv::Mat mat, uint32_t row);
 
 std::vector<double> background_features_estimation(cv::Mat mat, uint32_t bsize);

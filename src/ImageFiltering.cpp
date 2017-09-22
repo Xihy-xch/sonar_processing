@@ -1,5 +1,4 @@
 #include "ImageUtil.hpp"
-#include "ShapeProcessing.hpp"
 #include "Utils.hpp"
 #include "ImageFiltering.hpp"
 

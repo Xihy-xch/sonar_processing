@@ -1,4 +1,3 @@
-#include "third_party/spline.h"
 #include "Preprocessing.hpp"
 #include "ImageUtil.hpp"
 #include "Utils.hpp"
@@ -287,80 +286,6 @@ void preprocessing::difference_filter(cv::InputArray src_arr, cv::OutputArray ds
     }
 }
 
-cv::Mat preprocessing::remove_ground_distance(cv::Mat src, cv::Rect& horiz_roi) {
-    cv::Mat eqhist = cv::Mat::zeros(src.size(), src.type());
-    image_util::equalize_histogram_32f(src, eqhist);
-    cv::medianBlur(eqhist, eqhist, 5);
-    cv::Mat result;
-    src(horiz_roi = preprocessing::calc_horiz_roi(eqhist)).copyTo(result);
-    return result;
-}
-
-cv::Mat preprocessing::remove_ground_distance_accurate(cv::Mat src, cv::Rect& horiz_roi) {
-    cv::Mat mat = remove_ground_distance(src, horiz_roi);
-
-    std::vector<cv::Point> pts = preprocessing::compute_ground_distance_line(mat);
-
-    std::vector<uint32_t> ground_distance_line;
-    for (int i = 0; i < ground_distance_line.size(); i++){
-        ground_distance_line.push_back(pts[i].x);
-    }
-
-    horiz_roi.x = horiz_roi.x + *std::max_element(ground_distance_line.begin(), ground_distance_line.end());
-    horiz_roi.width = src.cols - horiz_roi.x;
-    src(horiz_roi).copyTo(mat);
-    return mat;
-}
-
-std::vector<cv::Point> preprocessing::compute_ground_distance_line(cv::Mat src, float thresh_factor) {
-    uint32_t bsize = 8;
-
-    int points_number = 7;
-
-    float ystep = src.rows / points_number;
-
-    cv::Mat src_canvas = cv::Mat::zeros(src.size(), CV_8UC3);
-
-    cv::Rect roi;
-
-    std::vector<double> X;
-    std::vector<double> Y;
-
-    for (int y = 0; y < src.rows; y+=ystep) {
-        roi = cv::Rect(0, (y + bsize < src.rows) ? y : src.rows - bsize - 1, src.cols/2, bsize);
-
-        cv::Mat block, cols_sum;
-        src(roi).convertTo(block, CV_32F, 1/255.0);
-        cv::reduce(block, cols_sum, 0, CV_REDUCE_SUM);
-        cv:blur(cols_sum, cols_sum, cv::Size(50, 50));
-
-        double min, max;
-        cv::minMaxLoc(cols_sum, &min, &max);
-
-        double thresh_min_max = ((max + min) / 2) * thresh_factor;
-
-        int x = -1;
-        while (cols_sum.at<float>(0, ++x) < thresh_min_max);
-
-        X.push_back(x);
-        Y.push_back(roi.y);
-    }
-
-    Y[Y.size()-1] = src.rows - 1;
-
-    tk::spline spline;
-    spline.set_points(Y, X);
-
-    uint32_t y = 0;
-    std::vector<cv::Point> pts;
-    while (y < src.rows) {
-        uint32_t xx = (uint32_t)utils::clip(spline((double)y++), 0, src.rows-1);
-        pts.push_back(cv::Point(xx, y));
-    }
-
-    return pts;
-}
-
 uint32_t preprocessing::find_first_higher(cv::Mat mat, uint32_t row) {
     cv::Mat line;
     mat.row(row).copyTo(line);
@@ -374,88 +299,6 @@ uint32_t preprocessing::find_first_higher(cv::Mat mat, uint32_t row) {
     for (int col = 0; col < mat.cols; col++) {
         if (line.at<float>(0, col) > thresh) return col;
     }
-}
-
-std::vector<double> preprocessing::background_features_estimation(cv::Mat src, uint32_t bsize) {
-    cv::Rect roi;
-    cv::Mat mat = remove_ground_distance_accurate(src, roi);
-    image_util::equalize_histogram_32f(mat, mat);
-    image_util::clahe_32f(mat, mat);
-
-    double mean_sum = 0;
-    double stddev_sum = 0;
-    double block_count = 0;
-
-    for (int y = 0; y < mat.rows-bsize; y+=bsize) {
-        for (int x = 0; x < mat.cols-bsize; x+=bsize) {
-            roi = cv::Rect(x, y, bsize, bsize);
-            cv::Mat block;
-            mat(roi).copyTo(block);
-            cv::Scalar mean, stddev;
-            cv::meanStdDev(block, mean, stddev);
-            mean_sum += mean[0];
-            stddev_sum += stddev[0];
-            block_count += 1;
-        }
-    }
-
-    std::vector<double> features;
-    features.push_back(mean_sum / block_count);
-    features.push_back(stddev_sum / block_count);
-    return features;
-
-}
-
-void preprocessing::background_features_difference(cv::InputArray src_arr, cv::OutputArray dst_arr, std::vector<double> features, uint32_t bsize) {
-    cv::Mat src = src_arr.getMat();
-
-    dst_arr.create(src.size(), src.type());
-    cv::Mat dst = dst_arr.getMat();
-    dst.setTo(0);
-
-    for (int y = 0; y < src.rows-bsize; y++) {
-        for (int x = 0; x < src.cols-bsize; x++) {
-            cv::Rect roi = cv::Rect(x, y, bsize, bsize);
-            cv::Mat block;
-            src(roi).copyTo(block);
-            cv::Scalar mean, stddev;
-            cv::meanStdDev(block, mean, stddev);
-            double mean_diff = mean[0] - features[0];
-            double stddev_diff = 0;
-            dst.at<float>(y, x) = sqrt(mean_diff * mean_diff + stddev_diff * stddev_diff);
-        }
-    }
-}
-
-std::vector<std::vector<cv::Point> > preprocessing::target_detect_by_high_intensities(cv::InputArray src_arr) {
-    cv::Mat src = src_arr.getMat();
-
-    cv::Mat mat = cv::Mat::zeros(src.size(), src.type());
-    image_util::equalize_histogram_32f(src, mat);
-    image_util::clahe_32f(mat, mat);
-
-    cv::imshow("mat", mat);
-
-    cv::Mat bin;
-    cv::normalize(mat, bin, 0, 1, cv::NORM_MINMAX);
-    cv::boxFilter(bin, bin, CV_32F, cv::Size(5, 5));
-    cv::threshold(bin, bin, 0.7, 1.0, cv::THRESH_BINARY);
-
-    mat.setTo(0);
-    preprocessing::mean_horiz_difference_thresholding(bin, mat, 10, 0.3, 0.2);
-
-    mat.convertTo(mat, CV_8UC1, 255);
-    std::vector<std::vector<cv::Point> > contours;
-
-    contours = adaptative_find_contours_and_filter(mat, 0.05, 0.2, 0.2);
-
-    mat.setTo(0);
-    cv::drawContours(mat, contours, -1, cv::Scalar(255), CV_FILLED);
-
-    cv::morphologyEx(mat, mat, cv::MORPH_DILATE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
-    cv::morphologyEx(mat, mat, cv::MORPH_ERODE, cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(11, 11)), cv::Point(-1, -1), 2);
-
-    return adaptative_find_contours_and_filter(mat, 1, 1, 1);
 }
 
 void preprocessing::contrast_filter(cv::InputArray src_arr, cv::OutputArray dst_arr, int div_size) {
@@ -892,64 +735,6 @@ void preprocessing::remove_low_intensities_columns(cv::InputArray src_arr, cv::O
     dst_arr.create(cv::Size(new_roi.width, new_roi.height), src.type());
     cv::Mat dst = dst_arr.getMat();
     src(new_roi).copyTo(dst);
-}
-
-void preprocessing::weak_shadow_thresholding(cv::InputArray src_arr, cv::OutputArray dst_arr) {
-    cv::Mat src = src_arr.getMat();
-    dst_arr.create(src.size(), CV_8UC1);
-    cv::Mat dst = dst_arr.getMat();
-
-    uint32_t bsize = 16;
-    uint32_t bstep = bsize / 2;
-
-    cv::Mat bin = cv::Mat::zeros(src.size(), CV_8UC1);
-
-    std::vector<cv::Point> ground_distance_line = compute_ground_distance_line(src, 1.25);
-
-    cv::blur(src, src, cv::Size(3, 3));
-    cv::normalize(src, src, 0, 255, cv::NORM_MINMAX);
-
-    for (int x = 0; x < src.cols-bsize; x+=bstep) {
-        cv::Rect roi = cv::Rect(x, 0, bsize, src.rows);
-        cv::Mat block;
-        src(roi).copyTo(block);
-        cv::Mat high_values;
-        cv::threshold(block, high_values, 80, 255, cv::THRESH_BINARY);
-        block.setTo(80, high_values);
-        cv::threshold(block, bin(roi), image_util::otsu_thresh_8u(block) * 0.6, 255, cv::THRESH_BINARY_INV);
-    }
-
-    for (int i = 0; i < ground_distance_line.size()-1; i++){
-        bin(cv::Rect(0, ground_distance_line[i].y, ground_distance_line[i].x, 1)).setTo(0);
-    }
-
-    cv::morphologyEx(bin, bin, cv::MORPH_OPEN,
-                 cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(7, 7)),
-                 cv::Point(-1, -1), 1);
-
-    cv::morphologyEx(bin, bin, cv::MORPH_CLOSE,
-                 cv::getStructuringElement(cv::MORPH_ELLIPSE,cv::Size(9, 9)),
-                 cv::Point(-1, -1), 1);
-
-    std::vector<std::vector<cv::Point> > contours = find_contours_and_filter(bin, cv::Size(src.cols * 0.075, src.rows * 0.075), CV_RETR_LIST);
-
-    dst.setTo(0);
-    cv::drawContours(dst, contours, -1, cv::Scalar(255), CV_FILLED);
-}
-
-std::vector<std::vector<cv::Point> > preprocessing::find_shadow_contours(cv::InputArray src_arr) {
-    cv::Mat src = src_arr.getMat();
-
-    cv::Mat shadow_mask;
-    weak_shadow_thresholding(src, shadow_mask);
-    return find_contours(shadow_mask);
-}
-
-std::vector<std::vector<cv::Point> > preprocessing::find_target_contours(cv::InputArray src_arr) {
-    cv::Mat src = src_arr.getMat();
-    cv::Mat hi_mask;
-    weak_target_thresholding(src, hi_mask);
-    return find_contours(hi_mask);
 }
 
 cv::Mat preprocessing::extract_cartesian_mask2(const cv::Mat& sonar_image, const cv::Mat& mask, float alpha) {

@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <algorithm>
 #include "MathUtil.hpp"
-#include "BasicOperations.hpp"
 #include "SonarHolder.hpp"
 
 namespace sonar_processing {
@@ -14,9 +13,6 @@ SonarHolder::SonarHolder()
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
     , interpolation_type_(LINEAR)
-    , neighborhood_size_(-1)
-    , neighborhood_table_bin_count_(-1)
-    , neighborhood_table_beam_count_(-1)
 {
 }
 
@@ -31,9 +27,6 @@ SonarHolder::SonarHolder(
     : cart_size_(-1, -1)
     , cart_origin_(0.0, 0.0)
     , total_elements_(0)
-    , neighborhood_size_(-1)
-    , neighborhood_table_bin_count_(-1)
-    , neighborhood_table_beam_count_(-1)
 {
     Reset(bins, start_beam, beam_width, bin_count, beam_count, cart_size, interpolation_type);
 }
@@ -377,14 +370,6 @@ void SonarHolder::CopyTo(SonarHolder& out) const {
     cart_image_mask_.copyTo(out.cart_image_mask_);
 }
 
-void SonarHolder::CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const {
-    CopyHeaderData(out);
-    CopyBinsValues(out, start_line_indices, final_line_indices);
-    out.raw_image_ = cv::Mat(out.bins_).reshape(1, out.beam_count_);
-    out.InitializeCartesianImage(out.bins_, out.cart_image_);
-    out.InitializeCartesianImageMask();
-}
-
 void SonarHolder::CopyHeaderData(SonarHolder& out) const {
     out.bearings_ = bearings_;
     out.bin_count_ = bin_count_;
@@ -400,170 +385,11 @@ void SonarHolder::CopyHeaderData(SonarHolder& out) const {
 
     out.radius_ = radius_;
     out.angles_ = angles_;
-
-    out.neighborhood_table_ = neighborhood_table_;
-    out.neighborhood_size_ = neighborhood_size_;
 }
 
 void SonarHolder::CopyBinsValues(SonarHolder& out) const {
     out.bins_ = bins_;
     out.bins_mask_ = bins_mask_;
-}
-
-void SonarHolder::CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const {
-    out.bins_ = bins_;
-    out.bins_mask_ = bins_mask_;
-    out.SetBinsOfInterest(start_line_indices, final_line_indices);
-}
-
-void SonarHolder::SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) {
-    std::vector<float> source_bins = bins_;
-
-    std::fill(bins_.begin(), bins_.end(), 0);
-    std::fill(bins_mask_.begin(), bins_mask_.end(), 0);
-
-    for (size_t i = 0; i < start_line_indices.size(); i++) {
-        int bin   = index_to_bin(start_line_indices[i]);
-        int beam  = index_to_beam(start_line_indices[i]);
-        int first = beam*bin_count_+bin;
-        int last  = beam*bin_count_+bin_count_-1;
-        std::copy(source_bins.begin()+first, source_bins.begin()+last, bins_.begin()+first);
-        std::fill(bins_mask_.begin()+first, bins_mask_.begin()+last, 1);
-    }
-
-    for (size_t i = 0; i < final_line_indices.size(); i++) {
-        int bin   = index_to_bin(final_line_indices[i]);
-        int beam  = index_to_beam(final_line_indices[i]);
-        int first = beam*bin_count_+bin;
-        int last  = beam*bin_count_+bin_count_-1;
-        std::fill(bins_.begin()+first, bins_.begin()+last, 0);
-        std::fill(bins_mask_.begin()+first, bins_mask_.begin()+last, 0);
-    }
-}
-
-void SonarHolder::CreateBinsOfInterestMask(int start_bin, std::vector<uchar>& mask) const {
-    std::vector<int> indices;
-    basic_operations::line_indices_from_bin(*this, start_bin, indices);
-
-    if (mask.empty()) {
-        mask.assign(bins_.size(), 0);
-    }
-
-    for (size_t i = 0; i < indices.size(); i++) {
-        int bin   = index_to_bin(indices[i]);
-        int beam  = index_to_beam(indices[i]);
-        int first = beam*bin_count_+bin;
-        int last  = beam*bin_count_+bin_count_-1;
-        std::fill(mask.begin()+first, mask.begin()+last, 255);
-    }
-}
-
-
-void SonarHolder::CopyBinsOfInterest(int start_bin, std::vector<float>& dst, std::vector<uchar>& mask) const {
-    std::vector<int> indices;
-    basic_operations::line_indices_from_bin(*this, start_bin, indices);
-    CopyBinsOfInterest(indices, dst, mask);
-}
-
-void SonarHolder::CopyBinsOfInterest(const std::vector<int>& indices, std::vector<float>& dst, std::vector<uchar>& mask) const {
-    CopyBinsOfInterest(indices, std::vector<int>(), dst, mask);
-}
-
-void SonarHolder::CopyBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices, std::vector<float>& dst) const {
-    std::vector<uchar> mask;
-    CopyBinsOfInterest(start_line_indices, final_line_indices, dst, mask);
-}
-
-void SonarHolder::CopyBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices,
-                                     std::vector<float>& dst, std::vector<uchar>& mask) const
-{
-    if (dst.empty()) {
-        dst.assign(bins_.size(), 0);
-        mask.assign(bins_.size(), 0);
-    }
-
-    for (size_t i = 0; i < start_line_indices.size(); i++) {
-        int bin   = index_to_bin(start_line_indices[i]);
-        int beam  = index_to_beam(start_line_indices[i]);
-        int first = beam*bin_count_+bin;
-        int last  = beam*bin_count_+bin_count_-1;
-        std::copy(bins_.begin()+first, bins_.begin()+last, dst.begin()+first);
-        std::fill(mask.begin()+first, mask.begin()+last, 255);
-    }
-
-    if (!final_line_indices.empty()) {
-        for (size_t i = 0; i < final_line_indices.size(); i++) {
-            int bin   = index_to_bin(final_line_indices[i]);
-            int beam  = index_to_beam(final_line_indices[i]);
-            int first = beam*bin_count_+bin;
-            int last  = beam*bin_count_+bin_count_-1;
-            std::fill(dst.begin()+first, dst.begin()+last, 0);
-            std::fill(mask.begin()+first, mask.begin()+last, 0);
-        }
-    }
-}
-
-void SonarHolder::BuildNeighborhoodTable(ScannerBase* scanner, int bin_count, int beam_count, int neighborhood_size, int start_bin) {
-
-    if (!is_neighborhood_table_modified(bin_count, beam_count, neighborhood_size)){
-        return;
-    }
-
-    int neighborhood_total = neighborhood_size * neighborhood_size;
-
-    neighborhood_table_bin_count_ = bin_count;
-    neighborhood_table_beam_count_ = beam_count;
-    neighborhood_size_ = neighborhood_size;
-    neighborhood_table_.assign(bin_count_ * beam_count_ * neighborhood_total, -1);
-
-    scanner->set_sonar_holder(this);
-    std::vector<int> indices(neighborhood_size * neighborhood_size, -1);
-
-    for (int bin = start_bin; bin < bin_count_-2; bin++) {
-        for (int beam = 1; beam < beam_count_-2; beam++) {
-            int polar_index = index_at(beam, bin);
-            std::fill(indices.begin(), indices.end(), -1);
-
-            scanner->GetCartesianNeighborhood(polar_index, neighborhood_size_, indices);
-
-            int offset = beam*bin_count_*neighborhood_total+bin*neighborhood_total;
-            std::copy(indices.begin(), indices.end(), neighborhood_table_.begin()+offset);
-        }
-    }
-}
-
-void SonarHolder::GetCartesianNeighborhoodIndices(int polar_index, std::vector<int>& indices, int nsize) const {
-
-    if (nsize > neighborhood_size_) {
-        throw std::invalid_argument("The input neighborhood size is bigger than the neighborhood table size");
-    }
-
-    if (indices.empty()) {
-        indices.resize(nsize * nsize, -1);
-    }
-
-    int beam = index_to_beam(polar_index);
-    int bin = index_to_bin(polar_index);
-    int neighborhood_total = neighborhood_size_*neighborhood_size_;
-    int offset = beam*bin_count_*neighborhood_total+bin*neighborhood_total;
-
-    if (nsize == neighborhood_size_) {
-        std::copy(neighborhood_table_.begin()+offset, neighborhood_table_.begin()+offset+neighborhood_total, indices.begin());
-        return;
-    }
-
-    int nsize_2 = nsize / 2;
-    int neighborhood_size_2 = neighborhood_size_ / 2;
-
-    int y_offset = neighborhood_size_2-nsize_2;
-    int x_offset = neighborhood_size_2-nsize_2;
-
-    for (int y = 0; y < nsize; y++) {
-        int noffset = offset+(y+y_offset)*neighborhood_size_+x_offset;
-        std::copy(neighborhood_table_.begin()+noffset,
-                  neighborhood_table_.begin()+noffset+nsize,
-                  indices.begin()+y*nsize);
-    }
 }
 
 } /* namespace sonar_processing */

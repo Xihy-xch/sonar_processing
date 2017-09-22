@@ -5,7 +5,6 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include "ImageUtil.hpp"
-#include "ScannerBase.hpp"
 
 #define DEFAULT_NEIGHBORHOOD_SIZE       7
 #define DEFAULT_NEIGHBORHOOD_START_BIN  100
@@ -63,36 +62,13 @@ public:
 
     void CreateCartesianImageFromCvMat(cv::InputArray raw_image, cv::OutputArray cart_image) const;
 
-    void BuildNeighborhoodTable(ScannerBase* scanner,
-                                int bin_count, int beam_count,
-                                int neighborhood_size = DEFAULT_NEIGHBORHOOD_SIZE,
-                                int start_bin = DEFAULT_NEIGHBORHOOD_START_BIN);
-
-    void GetCartesianNeighborhoodIndices(int polar_index, std::vector<int>& indices, int nsize) const;
-
     void GetPolarLimits(int polar_index, float& start_bin, float& final_bin, float& start_beam, float& final_beam) const;
 
     void CopyTo(SonarHolder& out) const;
 
-    void CopyTo(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
-
     void CopyHeaderData(SonarHolder& out) const;
 
     void CopyBinsValues(SonarHolder& out) const;
-
-    void CopyBinsValues(SonarHolder& out, const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices) const;
-
-    void SetBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices);
-
-    void CreateBinsOfInterestMask(int start_bin, std::vector<uchar>& mask) const;
-
-    void CopyBinsOfInterest(int start_bin, std::vector<float>& dst, std::vector<uchar>& mask) const;
-
-    void CopyBinsOfInterest(const std::vector<int>& start_line_indices, std::vector<float>& dst, std::vector<uchar>& mask) const;
-
-    void CopyBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices, std::vector<float>& dst) const;
-
-    void CopyBinsOfInterest(const std::vector<int>& start_line_indices, const std::vector<int>& final_line_indices, std::vector<float>& dst, std::vector<uchar>& mask) const;
 
     std::vector<float> bins() const {
         return bins_;
@@ -259,10 +235,6 @@ public:
         x1 = cart_line_limits_[line * 2 + 1];
     }
 
-    const std::vector<int>& neighborhood_table() const {
-        return neighborhood_table_;
-    }
-
     void GetNeighborhood(int polar_index, std::vector<int>& neighbors_indices, int neighbor_size = 3) const;
 
     cv::Point2f sector_top_left_point(int polar_index) const {
@@ -287,22 +259,6 @@ public:
         return image_util::bounding_rect(GetSectorPoints(polar_index));
     }
 
-    bool is_neighborhood_table_modified(int bin_count, int beam_count, int neighborhood_size = DEFAULT_NEIGHBORHOOD_SIZE) const {
-
-        if (!neighborhood_table_.empty() &&
-            neighborhood_table_bin_count_ == bin_count &&
-            neighborhood_table_beam_count_ == beam_count &&
-            neighborhood_size_ == neighborhood_size) {
-            return false;
-        }
-
-        return true;
-    }
-
-    bool has_neighborhood_table() const {
-        return !neighborhood_table_.empty();
-    }
-
 
     void load_cartesian_image(cv::InputArray bins_arr, cv::OutputArray image) const {
         cv::Mat bins = bins_arr.getMat();
@@ -311,12 +267,6 @@ public:
             bins.convertTo(bins, CV_32F, 1.0/255.0);
         }
         CreateCartesianImageFromCvMat(bins, image);
-    }
-
-    void load_roi_mask(int start_bin, cv::OutputArray mask_arr) const {
-        std::vector<uchar> mask;
-        CreateBinsOfInterestMask(start_bin, mask);
-        cv::Mat(mask).reshape(1, beam_count()).copyTo(mask_arr);
     }
 
     void show_sonar(const SonarHolder& sonar_holder, const std::string& title, cv::InputArray raw_arr, int scale=1) {
@@ -381,11 +331,6 @@ private:
     cv::Mat cart_image_;
     cv::Mat cart_image_mask_;
     cv::Mat raw_image_;
-
-    std::vector<int> neighborhood_table_;
-    int neighborhood_table_bin_count_;
-    int neighborhood_table_beam_count_;
-    int neighborhood_size_;
 
     float cart_width_factor_;
     float cart_height_factor_;
