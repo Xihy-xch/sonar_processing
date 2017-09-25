@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <opencv2/opencv.hpp>
 #include <base/Angle.hpp>
+#include "ImageFiltering.hpp"
 
 namespace sonar_processing {
 
@@ -70,6 +71,19 @@ inline static std::vector<float> get_radians(const std::vector<base::Angle>& ang
     std::vector<float> radians;
     for (std::vector<base::Angle>::const_iterator it = angles.begin(); it != angles.end(); it++) radians.push_back(it->rad);
     return radians;
+}
+
+inline static image_filtering::BorderFilterType border_filter_type(const std::string& type)
+{
+    if (type == "scharr") {
+        return image_filtering::kSCharr;
+    }
+
+    if (type == "prewitt") {
+        return image_filtering::kPrewitt;
+    }
+
+    return image_filtering::kSobel;
 }
 
 namespace now {
