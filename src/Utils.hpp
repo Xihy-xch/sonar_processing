@@ -86,6 +86,15 @@ inline static image_filtering::BorderFilterType border_filter_type(const std::st
     return image_filtering::kSobel;
 }
 
+inline size_t find_best_weight_location_index(const std::vector<double>& weights)
+{
+    std::vector<size_t> indices(weights.size());
+    for (size_t i = 0; i < indices.size(); i++) indices[i]=i;
+    std::sort(indices.begin(), indices.end(), sonar_processing::utils::IndexComparator<double>(weights));
+    std::reverse(indices.begin(), indices.end());
+    return indices[0];
+}
+
 namespace now {
 
 inline static uint64_t microseconds() {
