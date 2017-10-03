@@ -237,6 +237,11 @@ bool HOGDetector::PerformDetect(
     source_image(bounding_rect).copyTo(input_image);
     source_mask(bounding_rect).copyTo(input_mask);
 
+    if (window_size_.width >= input_image.size().width ||
+        window_size_.height >= input_image.size().height) {
+        return false;
+    }
+
     // convert to unsigned char
     input_image.convertTo(input_image, CV_8U, 255.0);
 
@@ -249,12 +254,12 @@ bool HOGDetector::PerformDetect(
         0.0, // the hit-threshold
         window_stride_, // the window stride
         cv::Size(8, 8), // the padding
+        //
         // 1.125, // the image scale
         image_scale_, // the image scale
         // 2, // the final threshold
         2, // the final threshold
         false); // enable the mean shift grouping
-
 
     FilterLocationInsideMask(locations_rects, weights, locations_rects, weights, input_image, input_mask);
 
