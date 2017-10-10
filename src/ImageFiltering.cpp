@@ -312,7 +312,7 @@ void insonification_correction(const cv::Mat& src, const cv::Mat& mask, cv::Mat&
 
     // calculate the proportional mean of each image row
     std::vector<double> row_mean(src.rows, 0);
-    for (size_t i = 0; i < src.rows; i++) {
+    for (size_t i = 30; i < src.rows; i++) {
         unsigned int num_points = cv::countNonZero(mask.row(i));
         if(num_points) {
             double value = cv::sum(src.row(i))[0] / num_points;
@@ -324,7 +324,7 @@ void insonification_correction(const cv::Mat& src, const cv::Mat& mask, cv::Mat&
     double max_mean = *std::max_element(row_mean.begin(), row_mean.end());
 
     // apply the insonification correction
-    for (size_t i = 0; i < src.rows; i++) {
+    for (size_t i = 30; i < src.rows; i++) {
         if(row_mean[i]) {
             double factor = max_mean / row_mean[i];
             dst.row(i) *= factor;
