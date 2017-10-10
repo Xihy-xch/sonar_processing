@@ -255,6 +255,9 @@ private:
         const std::vector<double>& weights,
         double& best_weight);
 
+    static const int SUCCEDED_LIMIT = 2;
+    static const int FAILED_LIMIT = 4;
+
     SonarHolder sonar_holder_;
     SonarImagePreprocessing sonar_image_processing_;
     cv::Size window_size_;
@@ -280,6 +283,7 @@ private:
     double orientation_range_;
 
     int succeeded_detect_count_;
+    int failed_detect_count_;
 
     double last_detected_orientation_;
 

@@ -18,6 +18,7 @@ HOGDetector::HOGDetector()
     , image_scale_(1.125)
     , window_stride_(8, 8)
     , succeeded_detect_count_(0)
+    , failed_detect_count_(0)
     , orientation_step_(15)
     , orientation_range_(15)
 {
@@ -146,38 +147,54 @@ bool HOGDetector::Detect(
     cv::Mat scaled_mask;
     cv::resize(preprocessed_mask, scaled_mask, cv::Size(), detection_scale_factor_, detection_scale_factor_);
 
-    if (succeeded_detect_count_ < 2) {
+    if (failed_detect_count_ > FAILED_LIMIT) {
+        succeeded_detect_count_ = 0;
+        last_detected_orientation_ = 0.0;
+    }
+
+    if (succeeded_detect_count_ < SUCCEDED_LIMIT) {
 
         RotateAndDetect(scaled_image, scaled_mask, -90, 90, orientation_step_, locations, found_weights);
 
         if (locations.empty()) {
-            succeeded_detect_count_ = 0;
-            last_detected_orientation_ = 0.0;
+            failed_detect_count_++;
             return false;
         }
 
         double best_weight = -1;
         last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights, best_weight);
 
-        if (best_weight < detection_minimum_weight_) return false;
+        if (best_weight < detection_minimum_weight_) {
+            found_weights.clear();
+            locations.clear();
+            failed_detect_count_++;
+            return false;
+        }
 
         succeeded_detect_count_++;
+        failed_detect_count_ = 0;
         return true;
     }
 
     RotateAndDetect(scaled_image, scaled_mask, last_detected_orientation_-orientation_range_, last_detected_orientation_+orientation_range_, 5, locations, found_weights);
 
     if (locations.empty()) {
-        succeeded_detect_count_ = 0;
-        last_detected_orientation_ = 0.0;
+        failed_detect_count_++;
         return false;
     }
 
     double best_weight = -1;
     last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights, best_weight);
-    if (best_weight < detection_minimum_weight_) return false;
+
+    if (best_weight < detection_minimum_weight_) {
+        found_weights.clear();
+        locations.clear();
+        failed_detect_count_++;
+        return false;
+    }
 
     succeeded_detect_count_++;
+    failed_detect_count_ = 0;
 
     return true;
 }
@@ -682,7 +699,7 @@ void HOGDetector::FilterLocationInsideMask(
         cv::bitwise_and(mat, mask, res);
         double area = (cv::sum(res)[0] / cv::sum(mat)[0]);
 
-        if (area > 0.6) {
+        if (area > 0.75) {
             new_locations.push_back(locations[i]);
             new_weights.push_back(weights[i]);
         }
