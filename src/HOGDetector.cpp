@@ -8,21 +8,21 @@
 namespace sonar_processing {
 
 HOGDetector::HOGDetector()
-    : window_size_(192, 48)
-    , training_scale_factor_(0.3)
-    , detection_scale_factor_(0.5)
-    , detection_minimum_weight_(0)
-    , show_descriptor_(false)
-    , show_positive_window_(false)
-    , sonar_image_size_(-1, -1)
-    , image_scale_(1.125)
-    , window_stride_(8, 8)
-    , succeeded_detect_count_(0)
-    , failed_detect_count_(0)
-    , orientation_step_(15)
-    , orientation_range_(15)
 {
-
+    window_size_ = cv::Size(192, 48);
+    window_stride_ = cv::Size(8, 8);
+    training_scale_factor_ = 0.3;
+    detection_scale_factor_ = 0.5;
+    detection_minimum_weight_ = 0;
+    show_descriptor_ = false;
+    show_positive_window_ = false;
+    sonar_image_size_ = cv::Size(-1, -1);
+    image_scale_ = 1.125;
+    orientation_step_ = 15.0;
+    orientation_range_ = 15.0;
+    succeeded_detect_count_ = 0;
+    failed_detect_count_ = 0;
+    memset(&last_detected_location_, 0, sizeof(last_detected_location_));
 }
 
 HOGDetector::~HOGDetector() {
@@ -133,6 +133,14 @@ bool HOGDetector::Detect(
     std::vector<cv::RotatedRect>& locations,
     std::vector<double>& found_weights)
 {
+
+    const int SUCCEDED_LIMIT = 5;
+    const int FAILED_LIMIT = 5;
+    const float MIN_LOCATION_DISTANCE = 50.0f;
+    const float PARTIAL_ROTATE_STEP = 5;
+    const float COMPLETE_START_RANGE_ANGLE = -90;
+    const float COMPLETE_FINAL_RANGE_ANGLE = 90;
+
     sonar_source_image.copyTo(sonar_source_image_);
     sonar_source_mask.copyTo(sonar_source_mask_);
 
@@ -149,34 +157,85 @@ bool HOGDetector::Detect(
 
     if (failed_detect_count_ > FAILED_LIMIT) {
         succeeded_detect_count_ = 0;
-        last_detected_orientation_ = 0.0;
+        failed_detect_count_ = 0;
     }
+
+    // cv::imshow("scaled_image", scaled_image);
 
     if (succeeded_detect_count_ < SUCCEDED_LIMIT) {
 
-        RotateAndDetect(scaled_image, scaled_mask, -90, 90, orientation_step_, locations, found_weights);
+        RotateAndDetect(
+            scaled_image,
+            scaled_mask,
+            COMPLETE_START_RANGE_ANGLE,
+            COMPLETE_FINAL_RANGE_ANGLE,
+            orientation_step_,
+            locations,
+            found_weights);
 
         if (locations.empty()) {
-            failed_detect_count_++;
+            succeeded_detect_count_ = 0;
             return false;
         }
 
         double best_weight = -1;
-        last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights, best_weight);
+        cv::RotatedRect best_detected_location;
+        FindBestDetectionLocation(locations, found_weights, best_weight, best_detected_location);
 
         if (best_weight < detection_minimum_weight_) {
             found_weights.clear();
             locations.clear();
-            failed_detect_count_++;
+            succeeded_detect_count_ = 0;
             return false;
         }
+
+        if (succeeded_detect_count_ >= 1) {
+            cv::Point2f point_dt = best_detected_location.center-last_detected_location_.center;
+            float dt = sqrt(point_dt.x * point_dt.x + point_dt.y * point_dt.y);
+
+            if (dt > MIN_LOCATION_DISTANCE) {
+                found_weights.clear();
+                locations.clear();
+                succeeded_detect_count_ = 0;
+                return false;
+            }
+        }
+
+        last_detected_location_ = best_detected_location;
 
         succeeded_detect_count_++;
         failed_detect_count_ = 0;
         return true;
     }
 
-    RotateAndDetect(scaled_image, scaled_mask, last_detected_orientation_-orientation_range_, last_detected_orientation_+orientation_range_, 5, locations, found_weights);
+    cv::Rect bbox = GetLastDetectedBoundingRect(
+        detection_scale_factor_,
+        scaled_mask.size());
+
+    cv::Mat new_scaled_mask = cv::Mat::zeros(scaled_mask.size(), scaled_mask.type());
+    scaled_mask(bbox).copyTo(new_scaled_mask(bbox));
+
+    float start_angle;
+    float final_angle;
+
+    if (succeeded_detect_count_ % 50 == 0) {
+        start_angle = COMPLETE_START_RANGE_ANGLE;
+        final_angle = COMPLETE_FINAL_RANGE_ANGLE;
+    }
+    else {
+        start_angle = last_detected_location_.angle-orientation_range_;
+        final_angle = last_detected_location_.angle+orientation_range_;
+    }
+
+    RotateAndDetect(
+        scaled_image,
+        new_scaled_mask,
+        start_angle,
+        final_angle,
+        PARTIAL_ROTATE_STEP,
+        locations,
+        found_weights);
+
 
     if (locations.empty()) {
         failed_detect_count_++;
@@ -184,14 +243,7 @@ bool HOGDetector::Detect(
     }
 
     double best_weight = -1;
-    last_detected_orientation_ = FindBestDetectionAngle(locations, found_weights, best_weight);
-
-    if (best_weight < detection_minimum_weight_) {
-        found_weights.clear();
-        locations.clear();
-        failed_detect_count_++;
-        return false;
-    }
+    FindBestDetectionLocation(locations, found_weights, best_weight, last_detected_location_);
 
     succeeded_detect_count_++;
     failed_detect_count_ = 0;
@@ -223,17 +275,18 @@ void HOGDetector::RotateAndDetect(
     }
 }
 
-double HOGDetector::FindBestDetectionAngle(
+void HOGDetector::FindBestDetectionLocation(
     const std::vector<cv::RotatedRect>& locations,
     const std::vector<double>& weights,
-    double& best_weight)
+    double& best_weight,
+    cv::RotatedRect &best_location)
 {
     std::vector<size_t> indices(weights.size());
     for (size_t i = 0; i < indices.size(); i++) indices[i]=i;
     std::sort(indices.begin(), indices.end(), sonar_processing::utils::IndexComparator<double>(weights));
     std::reverse(indices.begin(), indices.end());
     best_weight = weights[indices[0]];
-    return locations[indices[0]].angle;
+    best_location = locations[indices[0]];
 }
 
 bool HOGDetector::PerformDetect(
@@ -253,6 +306,10 @@ bool HOGDetector::PerformDetect(
     cv::Mat input_mask;
     source_image(bounding_rect).copyTo(input_image);
     source_mask(bounding_rect).copyTo(input_mask);
+
+    // cv::imshow("input_image", input_image);
+    // cv::imshow("input_mask", input_mask);
+    // cv::waitKey(15);
 
     if (window_size_.width >= input_image.size().width ||
         window_size_.height >= input_image.size().height) {
@@ -286,9 +343,11 @@ bool HOGDetector::PerformDetect(
 
     found_weights.insert(found_weights.end(), weights.begin(), weights.end());
 
+    cv::Point translate = bounding_rect.tl();
+
     TransformLocation(
         locations_rects, detection_scale_factor_, -rotated_angle,
-        bounding_rect.tl(), source_image_size, locations);
+        translate, source_image_size, locations);
 
     return true;
 }
@@ -400,6 +459,11 @@ void HOGDetector::ComputeTrainingData(
         input_mask,
         input_annotation_mask,
         rotated_angle);
+
+    // cv::imshow("sonar_source_image", sonar_source_image_);
+    // cv::imshow("preprocessed_image", preprocessed_image);
+    // cv::imshow("input_image", input_image);
+    // cv::waitKey(15);
 
     // validate positive input
     if (!positive_input_validate_ ||
@@ -715,6 +779,38 @@ bool HOGDetector::ValidatePositiveInput(
     cv::Mat res;
     cv::bitwise_and(mask, annotation_mask, res);
     return (cv::sum(res)[0] / cv::sum(annotation_mask)[0]) > 0.7;
+}
+
+cv::Rect HOGDetector::GetLastDetectedBoundingRect(
+    double scale,
+    cv::Size max_size)
+{
+    const float PADDING_FACTOR = 0.2;
+
+    cv::Rect bbox = last_detected_location_.boundingRect();
+    bbox.x *= scale;
+    bbox.y *= scale;
+    bbox.width *= scale;
+    bbox.height *= scale;
+
+    int padx = bbox.width * PADDING_FACTOR;
+    int pady = bbox.height * PADDING_FACTOR;
+
+    bbox.x -= padx;
+    bbox.y -= pady;
+    bbox.width += padx*2;
+    bbox.height  += pady*2;
+
+    if (bbox.x < 0) bbox.x = 0;
+    if (bbox.y < 0) bbox.y = 0;
+
+    int w = max_size.width;
+    int h = max_size.height;
+
+    if (bbox.width >= w) bbox.width = w-bbox.x;
+    if (bbox.height >= h) bbox.height = h-bbox.y;
+
+    return bbox;
 }
 
 } /* namespace sonar_processing */

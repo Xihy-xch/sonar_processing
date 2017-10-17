@@ -26,6 +26,12 @@ public:
         window_size_ = size;
     }
 
+    void reset_detection_stats() {
+        succeeded_detect_count_ = 0;
+        failed_detect_count_ = 0;
+        memset(&last_detected_location_, 0, sizeof(last_detected_location_));
+    }
+
     void set_show_descriptor(bool show_descriptor) {
         show_descriptor_ = show_descriptor;
     }
@@ -250,13 +256,16 @@ private:
         std::vector<cv::RotatedRect>& locations,
         std::vector<double>& found_weights);
 
-    double FindBestDetectionAngle(
+
+    void FindBestDetectionLocation(
         const std::vector<cv::RotatedRect>& locations,
         const std::vector<double>& weights,
-        double& best_weight);
+        double& best_weight,
+        cv::RotatedRect &best_location);
 
-    static const int SUCCEDED_LIMIT = 2;
-    static const int FAILED_LIMIT = 4;
+    cv::Rect GetLastDetectedBoundingRect(
+        double scale,
+        cv::Size max_size);
 
     SonarHolder sonar_holder_;
     SonarImagePreprocessing sonar_image_processing_;
@@ -282,11 +291,10 @@ private:
     double orientation_step_;
     double orientation_range_;
 
+    cv::RotatedRect last_detected_location_;
+
     int succeeded_detect_count_;
     int failed_detect_count_;
-
-    double last_detected_orientation_;
-
 };
 
 } /* namespace sonar_processing*/
