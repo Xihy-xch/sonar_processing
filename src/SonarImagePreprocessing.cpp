@@ -137,8 +137,7 @@ void SonarImagePreprocessing::PerformPreprocessing(
         image_filtering::border_filter(denoised_8u, border, cart_mask, border_filter_type_);
 
         // reduce mask size
-        cv::Size ksize = (mean_filter_ksize_ > 5) ? cv::Size(13, 13) : cv::Size(9, 9);
-        image_util::erode(cart_mask, cart_mask, ksize, 1);
+        image_util::erode(cart_mask, cart_mask, cv::Size(13, 13), 1);
         cv::threshold(cart_mask, cart_mask, 128, 255, CV_THRESH_BINARY);
 
         // apply cartesian mask
