@@ -134,8 +134,8 @@ bool HOGDetector::Detect(
     std::vector<double>& found_weights)
 {
 
-    const int SUCCEDED_LIMIT = 5;
-    const int FAILED_LIMIT = 5;
+    const int SUCCEDED_LIMIT = 3;
+    const int FAILED_LIMIT = 10;
     const float MIN_LOCATION_DISTANCE = 50.0f;
     const float PARTIAL_ROTATE_STEP = 5;
     const float COMPLETE_START_RANGE_ANGLE = -90;
@@ -159,8 +159,6 @@ bool HOGDetector::Detect(
         succeeded_detect_count_ = 0;
         failed_detect_count_ = 0;
     }
-
-    // cv::imshow("scaled_image", scaled_image);
 
     if (succeeded_detect_count_ < SUCCEDED_LIMIT) {
 
@@ -205,7 +203,11 @@ bool HOGDetector::Detect(
 
         succeeded_detect_count_++;
         failed_detect_count_ = 0;
-        return true;
+
+        found_weights.clear();
+        locations.clear();
+
+        return false;
     }
 
     cv::Rect bbox = GetLastDetectedBoundingRect(
@@ -213,18 +215,23 @@ bool HOGDetector::Detect(
         scaled_mask.size());
 
     cv::Mat new_scaled_mask = cv::Mat::zeros(scaled_mask.size(), scaled_mask.type());
+    std::cout << "size: " << scaled_mask.size() << std::endl;
+    std::cout << "bbox: " << bbox << std::endl;
     scaled_mask(bbox).copyTo(new_scaled_mask(bbox));
 
     float start_angle;
     float final_angle;
+    float angle_step;
 
     if (succeeded_detect_count_ % 50 == 0) {
         start_angle = COMPLETE_START_RANGE_ANGLE;
         final_angle = COMPLETE_FINAL_RANGE_ANGLE;
+        angle_step = orientation_step_;
     }
     else {
         start_angle = last_detected_location_.angle-orientation_range_;
         final_angle = last_detected_location_.angle+orientation_range_;
+        angle_step = PARTIAL_ROTATE_STEP;
     }
 
     RotateAndDetect(
@@ -232,7 +239,7 @@ bool HOGDetector::Detect(
         new_scaled_mask,
         start_angle,
         final_angle,
-        PARTIAL_ROTATE_STEP,
+        angle_step,
         locations,
         found_weights);
 
@@ -243,8 +250,28 @@ bool HOGDetector::Detect(
     }
 
     double best_weight = -1;
-    FindBestDetectionLocation(locations, found_weights, best_weight, last_detected_location_);
 
+    cv::RotatedRect best_detected_location;
+    FindBestDetectionLocation(locations, found_weights, best_weight, best_detected_location);
+    //
+    // if (best_weight < detection_minimum_weight_) {
+    //     found_weights.clear();
+    //     locations.clear();
+    //     failed_detect_count_++;
+    //     return false;
+    // }
+
+    cv::Point2f point_dt = best_detected_location.center-last_detected_location_.center;
+    float dt = sqrt(point_dt.x * point_dt.x + point_dt.y * point_dt.y);
+
+    if (dt > MIN_LOCATION_DISTANCE) {
+        found_weights.clear();
+        locations.clear();
+        failed_detect_count_++;
+        return false;
+    }
+
+    last_detected_location_ = best_detected_location;
     succeeded_detect_count_++;
     failed_detect_count_ = 0;
 
@@ -263,6 +290,9 @@ void HOGDetector::RotateAndDetect(
     cv::Mat rotated_image;
     cv::Mat rotated_mask;
     cv::Point2f center = cv::Point2f(source_image.cols/2, source_image.rows/2);
+
+    // cv::imshow("preprocessed_image", source_image);
+    // cv::waitKey(15);
 
     for (double theta=first_angle; theta<=last_angle; theta+=angle_step) {
         if (fabs(theta) >= 2.5) {
@@ -378,14 +408,11 @@ void HOGDetector::LoadTrainingData(
 
         std::vector<cv::Point> annotation_points = training_annotations[i];
 
-        if (!annotation_points.empty()) {
-
-            if (sonar_image_size_ != cv::Size(-1, -1)) {
-                ResizeAnnotationPoints(annotation_points, annotation_points);
-            }
-
-            ComputeTrainingData(annotation_points, gradient_positive, gradient_negative);
+        if (sonar_image_size_ != cv::Size(-1, -1)) {
+            ResizeAnnotationPoints(annotation_points, annotation_points);
         }
+
+        ComputeTrainingData(annotation_points, gradient_positive, gradient_negative);
     }
     printf("\n");
     std::cout << "Total Positive samples: " << gradient_positive.size() << std::endl;
@@ -424,13 +451,20 @@ void HOGDetector::PrepareInput(
     cv::Mat scaled_mask;
     cv::resize(preprocessed_mask, scaled_mask, cv::Size(), scale_factor, scale_factor);
 
-    cv::Mat scaled_annotation_mask;
-    cv::resize(annotation_mask, scaled_annotation_mask, cv::Size(), scale_factor, scale_factor);
+    if (!annotation.empty()) {
+        cv::Mat scaled_annotation_mask;
+        cv::resize(annotation_mask, scaled_annotation_mask, cv::Size(), scale_factor, scale_factor);
 
-    // perform the orientation normalize
-    OrientationNormalize(scaled_image, scaled_mask, scaled_annotation_mask,
-        cv::minAreaRect(annotation),
-        input_image, input_mask, input_annotation_mask, rotated_angle);
+        // perform the orientation normalize
+        OrientationNormalize(scaled_image, scaled_mask, scaled_annotation_mask,
+            cv::minAreaRect(annotation),
+            input_image, input_mask, input_annotation_mask, rotated_angle);
+            return;
+    }
+
+    scaled_image.copyTo(input_image);
+    scaled_mask.copyTo(input_mask);
+    input_annotation_mask = cv::Mat::zeros(scaled_mask.size(), scaled_mask.type());
 }
 
 
@@ -464,6 +498,11 @@ void HOGDetector::ComputeTrainingData(
     // cv::imshow("preprocessed_image", preprocessed_image);
     // cv::imshow("input_image", input_image);
     // cv::waitKey(15);
+
+    cv::imshow("input_image", input_image);
+    cv::imshow("input_mask", input_mask);
+    cv::imshow("input_annotation_mask", input_annotation_mask);
+    cv::waitKey();
 
     // validate positive input
     if (!positive_input_validate_ ||
@@ -801,14 +840,19 @@ cv::Rect HOGDetector::GetLastDetectedBoundingRect(
     bbox.width += padx*2;
     bbox.height  += pady*2;
 
-    if (bbox.x < 0) bbox.x = 0;
-    if (bbox.y < 0) bbox.y = 0;
-
     int w = max_size.width;
     int h = max_size.height;
 
-    if (bbox.width >= w) bbox.width = w-bbox.x;
-    if (bbox.height >= h) bbox.height = h-bbox.y;
+    if (bbox.x < 0) bbox.x = 0;
+    if (bbox.y < 0) bbox.y = 0;
+
+    if (bbox.x+bbox.width >= w) {
+        bbox.width = w-bbox.x-1;
+    }
+
+    if (bbox.y+bbox.height >= h) {
+        bbox.height = h-bbox.y-1;
+    }
 
     return bbox;
 }
