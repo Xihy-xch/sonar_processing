@@ -8,13 +8,11 @@ file ( GLOB HEADERS ${PROJECT_SOURCE_DIR}/src/*.hpp )
 
 include_directories (
     ${CMAKE_INSTALL_PREFIX}/include/
-    ${CMAKE_INSTALL_PREFIX}/include/sonar_toolkit
     ${EIGEN3_INCLUDE_DIR}
 )
 
 link_directories (
     ${CMAKE_INSTALL_PREFIX}/lib/
-    ${CMAKE_INSTALL_PREFIX}/lib/sonar_toolkit
 )
 
 add_library (
@@ -24,10 +22,21 @@ add_library (
 
 install(
     FILES ${HEADERS}
-    DESTINATION include/sonar_toolkit/${PROJECT_NAME}
+    DESTINATION include/${PROJECT_NAME}
 )
 
 install(
     TARGETS sonar_processing
-    DESTINATION lib/sonar_toolkit
+    DESTINATION lib
+)
+
+configure_file(
+    src/${PROJECT_NAME}.pc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc
+    @ONLY
+)
+
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc
+    DESTINATION lib/pkgconfig
 )
