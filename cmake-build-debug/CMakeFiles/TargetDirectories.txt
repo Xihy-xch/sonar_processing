@@ -1,0 +1,7 @@
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/install/strip.dir
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/install/local.dir
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/sonar_processing.dir
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/install.dir
+/home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug/CMakeFiles/list_install_components.dir

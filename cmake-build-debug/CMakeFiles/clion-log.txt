@@ -1,0 +1,4 @@
+/home/xch/JetBrains/clion-2020.3/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/xch/workspace/vscode-workspaces/C++/sonar_processing
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/xch/workspace/vscode-workspaces/C++/sonar_processing/cmake-build-debug
