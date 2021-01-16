@@ -255,6 +255,8 @@ void saliency_mapping(cv::InputArray src_arr, cv::OutputArray dst_arr, int block
 
     cv::Mat src = src_arr.getMat();
 
+
+    //test
     int width = src.cols;
     int height = src.rows;
     int block_width = width/block_count;
